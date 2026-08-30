@@ -15,7 +15,7 @@ has no `set_culprit` function.** That absence is the product.
 | **Live app** | https://frontend-nu-one-15.vercel.app/ |
 | **Contract** | [`0x3133B01d4EB7e1022913dF5fb1219cAE77D3f4a6`](https://genlayer-explorer.vercel.app/address/0x3133B01d4EB7e1022913dF5fb1219cAE77D3f4a6) |
 | **Network** | GenLayer StudioNet — chain `61999`, RPC `https://studio.genlayer.com/api` |
-| **Playable case** | `glasshouse-0217-live` |
+| **Playable case** | `glasshouse-0217-reviewer` (open until 2026-09-29) |
 | **Runner** | `py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6` |
 
 ---
@@ -82,15 +82,42 @@ the only source of a culprit is `gl.vm.run_nondet_unsafe`. A direct test asserts
 | `create_case` | `0x339864e4809f5873055398706e0e85e1333c988f4c906f7ef89b50e9a1a00dd3` |
 | `publish_case` | `0xab1154b0523426d47c7b04eb6bcfd89a392bd2e6910ba7ee0621cbd4ff67c6e9` |
 
-Case `glasshouse-0217-live` is published and **open for entries** — this is the case a
-reviewer plays. Its own settlement hashes are recorded here once players run it to a
-verdict.
+### Full lifecycle on that same contract
 
-### Full lifecycle, already run against real validators
+`glasshouse-0217-proof` was run end to end on the production contract with **no mocks** —
+real leader, real validators, real verdict, real payout:
 
-The complete cycle has been exercised end to end on StudioNet with **no mocks** — a
-real leader, real validators, a real consensus verdict and a real payout — on a sibling
-deployment of the identical contract,
+| Step | Transaction |
+|---|---|
+| Player 1 enters | `0x664f8fc6f9b0091647e9340b53b88bdec316cbfa09fc258ac2fb4dc770ad5c6b` |
+| Player 2 enters | `0x7945a8a11dbfc84009bbe39280a1e309fc903c3fa27af6439bad3204b264eac9` |
+| Advance to reveal | `0xff8fe041824e4b4d42fb2bbc17d9f3c45c1b485847aedef1d90afb952a27ff5d` |
+| Player 1 reveals | `0xb6330b64218be62d29137afb4c2894c154c9c5c4130380f15ef64d57f7af5f24` |
+| Player 2 reveals | `0xc28719690ecf733067c3f67fb1bbc5a0ee1df98720c23280a215d73c64010296` |
+| Advance to resolvable | `0x8d1fa5ad6038a88e8f45571a96ce5b488d686d4233c979679631755c9d3a3ac8` |
+| `resolve_case` | `0x3dd0b79c02b8f406702fd77b86be7213fa20ec7c6a1285dc9fc2208960d7f7aa` |
+| Player 1 claims | `0x65f5c0e7a3954a6f6c2e003f3ff20da1b5dfaf8e03e6d9009bb4c4949ee73219` |
+| Player 2 claims | `0x87db74740e58513f68fb3b7eab92d1691d5bd26cc52b6236c5cb7910ef560f6e` |
+
+**Verdict:** `FINAL`, culprit `SUSPECT-B`, cited evidence `EVIDENCE-01`, `EVIDENCE-03`,
+`EVIDENCE-04`, reason `convergent_evidence`, confidence `HIGH`.
+
+**Settlement:** `paid_out` 2.0 GEN of 2.0 GEN escrow — the pool distributed exactly,
+nothing stranded. Both players accused the same suspect but cited different exhibits, so
+this run also demonstrates the weighted split: player 1 matched all three cited exhibits
+(weight 4), player 2 matched one (weight 2).
+
+Cases live on the contract right now:
+
+| Case | Status | Entries close |
+|---|---|---|
+| `glasshouse-0217-reviewer` | **open — play this one** | 2026-09-29 22:35 UTC |
+| `glasshouse-0217-live` | open | 2026-09-01 20:44 UTC |
+| `glasshouse-0217-proof` | resolved and settled | — |
+
+### Corroborating run on a separate deployment
+
+The same cycle was also exercised earlier on
 [`0x08219e9d65F14412Df3496b63035d052B9D44005`](https://genlayer-explorer.vercel.app/address/0x08219e9d65F14412Df3496b63035d052B9D44005),
 case `glasshouse-0217-integration`:
 

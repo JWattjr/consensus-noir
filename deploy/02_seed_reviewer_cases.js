@@ -51,13 +51,15 @@ const PROFILES = {
     minPlayers: 2,
     maxPlayers: 16,
   },
-  // Short enough to run the full production lifecycle in one sitting.
+  // Short enough to run the full production lifecycle in one sitting. The
+  // windows must clear real wall-clock time on StudioNet, so they allow for
+  // two entries and two reveals confirming at roughly 20-30s each.
   proof: {
     caseId: "glasshouse-0217-proof",
-    accusation: 900,
-    reveal: 1800,
-    resolution: 2100,
-    refund: 7200,
+    accusation: 240,
+    reveal: 480,
+    resolution: 540,
+    refund: 3600,
     minPlayers: 2,
     maxPlayers: 2,
   },
