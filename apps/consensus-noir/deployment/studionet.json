@@ -10,17 +10,6 @@
     "create_case": "0x339864e4809f5873055398706e0e85e1333c988f4c906f7ef89b50e9a1a00dd3",
     "publish_case": "0xab1154b0523426d47c7b04eb6bcfd89a392bd2e6910ba7ee0621cbd4ff67c6e9"
   },
-  "case": {
-    "caseId": "glasshouse-0217-live",
-    "status": "OPEN",
-    "accusationDeadline": 1788295444,
-    "revealDeadline": 1788381844,
-    "resolutionEligibilityTime": 1788385444,
-    "refundDeadline": 1788727444,
-    "entryStakeWei": "1000000000000000000",
-    "minPlayers": 2,
-    "maxPlayers": 4
-  },
   "frontend": {
     "url": "https://frontend-nu-one-15.vercel.app",
     "deploymentUrl": "https://frontend-dk602cuhu-wattxs-projects.vercel.app",
@@ -47,7 +36,11 @@
     },
     "resolution": {
       "culpritId": "SUSPECT-B",
-      "materialEvidenceIds": ["EVIDENCE-01", "EVIDENCE-03", "EVIDENCE-04"],
+      "materialEvidenceIds": [
+        "EVIDENCE-01",
+        "EVIDENCE-03",
+        "EVIDENCE-04"
+      ],
       "reasonCode": "convergent_evidence"
     },
     "notes": [
@@ -57,7 +50,77 @@
   },
   "notes": [
     "StudioNet is the only supported network for this app.",
-    "The production dossier is seeded and published. Entry/reveal/resolve/claim hashes are recorded only after a real player lifecycle is exercised.",
+    "The production contract has completed its own entry -> reveal -> resolve -> claim cycle; see productionLifecycle.",
+    "glasshouse-0217-reviewer stays open until 2026-09-29 so reviewers always have a playable case.",
     "The recorded address must match NEXT_PUBLIC_CONSENSUS_NOIR_CONTRACT in the hosting environment."
-  ]
+  ],
+  "cases": {
+    "live": {
+      "caseId": "glasshouse-0217-live",
+      "status": "OPEN",
+      "accusationDeadline": 1788295444,
+      "revealDeadline": 1788381844,
+      "resolutionEligibilityTime": 1788385444,
+      "refundDeadline": 1788727444,
+      "entryStakeWei": "1000000000000000000",
+      "minPlayers": 2,
+      "maxPlayers": 4
+    },
+    "reviewer": {
+      "caseId": "glasshouse-0217-reviewer",
+      "purpose": "Long window so reviewers always find a playable case.",
+      "status": "OPEN",
+      "createTransaction": "0x0de08c6c566f2fafd69cce6df8fa4cf86fee718eef69e2bbe865ffce1d5117c4",
+      "publishTransaction": "0x9bd0b9cc31d8319a1a22c7d3a1cd1e615803b8bd5d7c10a9d13c76831237fc24",
+      "accusationDeadline": 1790721342,
+      "revealDeadline": 1790894142,
+      "resolutionEligibilityTime": 1790897742,
+      "refundDeadline": 1792017342,
+      "entryStakeWei": "1000000000000000000",
+      "minPlayers": 2,
+      "maxPlayers": 16
+    },
+    "proof": {
+      "caseId": "glasshouse-0217-proof",
+      "purpose": "Completed lifecycle on the production contract.",
+      "status": "RESOLVED",
+      "createTransaction": "0x82a79bbda317c3df4869b308cedd420aea754907a0875df89eaf12541d582a54",
+      "publishTransaction": "0x01302a76bee6b4ef0cb28faa9008c51b6f4158032dcd8e53e778067e40cf8844",
+      "entryStakeWei": "1000000000000000000",
+      "minPlayers": 2,
+      "maxPlayers": 2
+    }
+  },
+  "productionLifecycle": {
+    "caseId": "glasshouse-0217-proof",
+    "contractAddress": "0x3133B01d4EB7e1022913dF5fb1219cAE77D3f4a6",
+    "status": "RESOLVED",
+    "resolutionStatus": "FINAL",
+    "culpritId": "SUSPECT-B",
+    "materialEvidenceIds": [
+      "EVIDENCE-01",
+      "EVIDENCE-03",
+      "EVIDENCE-04"
+    ],
+    "confidenceBucket": "HIGH",
+    "reasonCode": "convergent_evidence",
+    "totalEscrowWei": "2000000000000000000",
+    "paidOutWei": "2000000000000000000",
+    "unpaidObligationWei": "0",
+    "transactions": {
+      "enterPlayer1": "0x664f8fc6f9b0091647e9340b53b88bdec316cbfa09fc258ac2fb4dc770ad5c6b",
+      "enterPlayer2": "0x7945a8a11dbfc84009bbe39280a1e309fc903c3fa27af6439bad3204b264eac9",
+      "advanceToReveal": "0xff8fe041824e4b4d42fb2bbc17d9f3c45c1b485847aedef1d90afb952a27ff5d",
+      "revealPlayer1": "0xb6330b64218be62d29137afb4c2894c154c9c5c4130380f15ef64d57f7af5f24",
+      "revealPlayer2": "0xc28719690ecf733067c3f67fb1bbc5a0ee1df98720c23280a215d73c64010296",
+      "advanceToResolvable": "0x8d1fa5ad6038a88e8f45571a96ce5b488d686d4233c979679631755c9d3a3ac8",
+      "resolve": "0x3dd0b79c02b8f406702fd77b86be7213fa20ec7c6a1285dc9fc2208960d7f7aa",
+      "claimPlayer1": "0x65f5c0e7a3954a6f6c2e003f3ff20da1b5dfaf8e03e6d9009bb4c4949ee73219",
+      "claimPlayer2": "0x87db74740e58513f68fb3b7eab92d1691d5bd26cc52b6236c5cb7910ef560f6e"
+    },
+    "notes": [
+      "Both players accused SUSPECT-B but cited different exhibits, so this run also exercises the evidence-weighted split: player 1 matched all three cited exhibits (weight 4), player 2 matched one (weight 2).",
+      "paid_out equals total_escrow exactly, so the pool was fully distributed with nothing stranded."
+    ]
+  }
 }
