@@ -1,0 +1,14 @@
+networks:
+  default: studionet
+
+  # Keep the hosted smoke test inert by default. For an explicit run, add two
+  # funded private keys locally (never commit them):
+  # studionet:
+  #   accounts: ["0x...", "0x..."]
+  studionet: {}
+
+paths:
+  contracts: contracts
+  artifacts: artifacts
+
+environment: .env
