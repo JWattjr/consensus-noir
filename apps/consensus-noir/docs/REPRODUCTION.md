@@ -1,10 +1,8 @@
 # Consensus Noir reproduction record
 
-The repository contains a StudioNet-only MVP. There is no deployed address or
-transaction hash yet; [`deployment/studionet.json`](../deployment/studionet.json)
-is the explicit not-deployed record. Do not point the UI at an address until the
-contract has been deployed to StudioNet (chain `61999`) and the hashes have been
-recorded.
+The repository contains a StudioNet-only MVP. The current deployment and seeded
+case are recorded in [`deployment/studionet.json`](../deployment/studionet.json)
+on chain `61999`.
 
 ## Contract checks
 
@@ -35,6 +33,17 @@ $env:CONSENSUS_NOIR_RUN_INTEGRATION = "1"
 python -m pytest tests/integration/test_consensus_noir_studionet.py -m integration -v -s
 ```
 
+On this Windows setup, the two funded CLI accounts can be supplied without
+copying keys into the repository by running:
+
+```powershell
+node scripts/run_studionet_integration.cjs
+```
+
+The helper reads the accounts from the GenLayer CLI OS keychain, writes a
+temporary config for the child process, and restores the inert config before it
+exits.
+
 The test deploys a fresh contract, creates and publishes a frozen dossier,
 enters two accounts, reveals both commitments, advances the fixed windows, and
 calls `resolve_case` with `consensus_max_rotations=5`. It requires a terminal
@@ -42,9 +51,9 @@ calls `resolve_case` with `consensus_max_rotations=5`. It requires a terminal
 mocked. It prints `CONSENSUS_NOIR_STUDIONET_RESULT=...` with the address and
 transaction hashes for the deployment record.
 
-With the checked-in inert config, the test intentionally skips before any
-network write. In a restricted environment it also reports a skip when the
-StudioNet RPC is unreachable; this workspace has no permitted hosted egress.
+The checked-in inert config intentionally skips before any integration write.
+The production dossier was seeded with the deployment script in
+`deploy/01_seed_studionet.js`; rerunning it is idempotent for the case ID.
 
 ## Frontend
 
@@ -58,8 +67,8 @@ npm run dev -- --port 3000
 ```
 
 Without `NEXT_PUBLIC_CONSENSUS_NOIR_CONTRACT`, the app deliberately renders a
-read-only preview dossier. To connect the real app, copy `.env.example` to
-`.env.local`, set the deployed StudioNet contract address (and optionally the
+read-only preview dossier. The local `.env.local` points at the deployed
+StudioNet address; for hosting, set the same public variable (and optionally the
 RPC endpoint), then reload. Wallet writes are browser-signed through GenLayerJS;
 the browser never supplies a culprit or payout result.
 

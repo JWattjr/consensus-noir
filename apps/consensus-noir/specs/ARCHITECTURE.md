@@ -44,8 +44,9 @@ permissionless resolve ──> leader analysis + independent validator analysis
 - A custom GenLayer leader/validator adjudication over the frozen case. The
   validator independently reruns the substantive analysis and compares the
   canonical stable fields, not just JSON shape.
-- Deterministic eligibility, equal split, smallest-address remainder assignment,
-  individual refunds, idempotent claims, and terminal liveness handling.
+- Deterministic eligibility, evidence-weighted split, smallest-address remainder
+  assignment, individual refunds, idempotent claims, and terminal liveness
+  handling.
 
 ### External sources
 

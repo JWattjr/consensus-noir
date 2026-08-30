@@ -34,6 +34,6 @@ StudioNet (chain `61999`, `https://studio.genlayer.com/api`) is the only
 supported network. No legacy GenLayer testnet is referenced anywhere in this
 app.
 
-No mainnet deployment is included. Populate `deployment/studionet.json` only
-after deploying to StudioNet and recording the contract address, runner hash,
-transaction hashes, and reproduction commands.
+No mainnet deployment is included. The current StudioNet deployment, seeded
+`glasshouse-0217-live` case, runner hash, and transaction hashes are recorded in
+`deployment/studionet.json`.

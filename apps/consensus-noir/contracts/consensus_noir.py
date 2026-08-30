@@ -749,7 +749,11 @@ class ConsensusNoir(gl.Contract):
             '"material_evidence_ids":["E1","E2","E3"],'
             '"contradicted_statement_ids":["S1"],'
             '"confidence_bucket":"HIGH|MEDIUM|LOW|NONE",'
-            '"reason_code":"allowed short code"}. '
+            '"reason_code":"one of the allowed codes"}. '
+            "reason_code must be exactly one of: "
+            "convergent_evidence, material_contradiction, underdetermined, "
+            "source_unavailable, execution_unavailable, malformed_analysis. "
+            "Do not invent, combine, or capitalize a different code. "
             "For FINAL, culprit_id must be a listed suspect, confidence cannot be "
             "NONE, and material_evidence_ids must hold exactly three distinct "
             "IDs. For VOID or UNRESOLVED, culprit_id must be empty and "

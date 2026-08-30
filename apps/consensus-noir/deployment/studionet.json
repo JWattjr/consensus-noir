@@ -1,11 +1,60 @@
 {
-  "status": "not_deployed",
+  "status": "deployed",
   "network": "GenLayer StudioNet",
   "chainId": 61999,
   "rpc": "https://studio.genlayer.com/api",
   "runner": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6",
-  "contractAddress": null,
-  "transactions": {},
+  "contractAddress": "0x3133B01d4EB7e1022913dF5fb1219cAE77D3f4a6",
+  "transactions": {
+    "deploy": "0x404196801da41706ac008537b89223bcec4dc8d281902ed92691bf892f36c2c7",
+    "create_case": "0x339864e4809f5873055398706e0e85e1333c988f4c906f7ef89b50e9a1a00dd3",
+    "publish_case": "0xab1154b0523426d47c7b04eb6bcfd89a392bd2e6910ba7ee0621cbd4ff67c6e9"
+  },
+  "case": {
+    "caseId": "glasshouse-0217-live",
+    "status": "OPEN",
+    "accusationDeadline": 1788295444,
+    "revealDeadline": 1788381844,
+    "resolutionEligibilityTime": 1788385444,
+    "refundDeadline": 1788727444,
+    "entryStakeWei": "1000000000000000000",
+    "minPlayers": 2,
+    "maxPlayers": 4
+  },
+  "frontend": {
+    "url": "https://frontend-nu-one-15.vercel.app",
+    "deploymentUrl": "https://frontend-dk602cuhu-wattxs-projects.vercel.app",
+    "deploymentId": "dpl_2PHaUnUh4uHN1G8r2XhQXbrUKeYT",
+    "target": "production",
+    "contractEnv": "NEXT_PUBLIC_CONSENSUS_NOIR_CONTRACT"
+  },
+  "integrationProof": {
+    "network": "studionet",
+    "contractAddress": "0x08219e9d65F14412Df3496b63035d052B9D44005",
+    "caseId": "glasshouse-0217-integration",
+    "status": "RESOLVED",
+    "resolutionStatus": "FINAL",
+    "validatorResult": "MAJORITY_AGREE",
+    "transactions": {
+      "ownerEntry": "0xc917d5746080ebb53d0bd2fc193cadb0206034d187535028ea19cec83d9fcb88",
+      "secondEntry": "0xef40b273f220b9db3700acf38dd759279cfbe9c1cde87be836af6a2638499c3b",
+      "openReveal": "0x8405bc5308c825ad96295a0c8b3f0804f9f3680a563fa6af0a970e6b893bcd2d",
+      "ownerReveal": "0x5a8dd1a1a9db845ce0e1bcfa50ae5d0065285026aea1f07c9aa46349286c55ac",
+      "secondReveal": "0xeb237f1b505b66d8d8c72cf2cc2ea5341a5301dd10c49fe13eff258a209a7f7c",
+      "resolvable": "0xc5daf336b134ed62d7f6e42134d42e0270be20ce5b17bf5ae04b4f1fabee658e",
+      "resolve": "0x0c47c68ba0cd4b66a4f8e054307e03abe7a6831168378fa001793f30e14d39cc",
+      "claim": "0x95ca84ffbc1016b12095f50e09374dbb1b4bad35a78731f0ea9645b462a949b1"
+    },
+    "resolution": {
+      "culpritId": "SUSPECT-B",
+      "materialEvidenceIds": ["EVIDENCE-01", "EVIDENCE-03", "EVIDENCE-04"],
+      "reasonCode": "convergent_evidence"
+    },
+    "notes": [
+      "The resolve client wait timed out while the transaction was still COMMITTING; a read-only poll confirmed FINALIZED/MAJORITY_AGREE before the claim was submitted.",
+      "Create and publish hashes are omitted here because the test process timed out before emitting its result line; the production create/publish hashes are recorded above."
+    ]
+  },
   "notes": [
     "StudioNet is the only supported network for this app.",
     "The production dossier is seeded and published. Entry/reveal/resolve/claim hashes are recorded only after a real player lifecycle is exercised.",

@@ -26,6 +26,10 @@ REVEAL_DEADLINE = BASE_TS + 120
 RESOLUTION_TIME = BASE_TS + 180
 REFUND_DEADLINE = BASE_TS + 900
 ENTRY_STAKE = 1
+# Hosted validator rotations can legitimately take several minutes. Keep the
+# short default for ordinary transactions but allow the opt-in resolve step to
+# wait long enough for real StudioNet consensus to finish.
+RESOLVE_WAIT_RETRIES = int(os.environ.get("CONSENSUS_NOIR_RESOLVE_WAIT_RETRIES", "1800"))
 
 SUSPECTS = [
     {"id": "SUSPECT-A", "name": "Mara Voss", "profile": "Night curator"},
@@ -179,13 +183,13 @@ def test_real_studionet_consensus_resolves_frozen_dossier():
     )
     assert tx_execution_succeeded(opened_reveal), opened_reveal
     revealed_a = contract.reveal_accusation(args=[CASE_ID, suspect_id, theory_a, PICKS_JSON, salt_a]).transact(
-        transaction_context=tx_context("2035-01-01T00:02:01Z"), wait_interval=1000, wait_retries=8
+        transaction_context=tx_context("2035-01-01T00:01:30Z"), wait_interval=1000, wait_retries=8
     )
     assert tx_execution_succeeded(revealed_a), revealed_a
     revealed_b = contract.connect(second).reveal_accusation(
         args=[CASE_ID, suspect_id, theory_b, PICKS_JSON, salt_b]
     ).transact(
-        transaction_context=tx_context("2035-01-01T00:02:01Z"), wait_interval=1000, wait_retries=8
+        transaction_context=tx_context("2035-01-01T00:01:30Z"), wait_interval=1000, wait_retries=8
     )
     assert tx_execution_succeeded(revealed_b), revealed_b
 
@@ -197,7 +201,7 @@ def test_real_studionet_consensus_resolves_frozen_dossier():
         consensus_max_rotations=5,
         transaction_context=tx_context("2035-01-01T00:04:01Z"),
         wait_interval=1000,
-        wait_retries=8,
+        wait_retries=RESOLVE_WAIT_RETRIES,
     )
     assert tx_execution_succeeded(resolved), resolved
 
@@ -231,6 +235,13 @@ def test_real_studionet_consensus_resolves_frozen_dossier():
                 "network": "studionet",
                 "contractAddress": contract.address,
                 "createTransaction": transaction_id(create),
+                "publishTransaction": transaction_id(published),
+                "ownerEntryTransaction": transaction_id(first_entry),
+                "secondEntryTransaction": transaction_id(second_entry),
+                "openRevealTransaction": transaction_id(opened_reveal),
+                "ownerRevealTransaction": transaction_id(revealed_a),
+                "secondRevealTransaction": transaction_id(revealed_b),
+                "resolvableTransaction": transaction_id(resolvable),
                 "resolutionTransaction": transaction_id(resolved),
                 "claimTransaction": settlement,
                 "caseId": CASE_ID,
