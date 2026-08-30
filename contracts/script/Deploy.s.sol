@@ -32,7 +32,7 @@ contract Deploy is Script {
         );
 
         address deployer = vm.addr(deployerPrivateKey);
-        console2.log("=== ProofPlay Base Sepolia deployment ===");
+        console2.log("=== Archived football-duel deployment ===");
         console2.log("Chain ID:", block.chainid);
         console2.log("Deployer:", deployer);
         console2.log("Base Sepolia test USDC:", BASE_SEPOLIA_TEST_USDC);
@@ -45,7 +45,7 @@ contract Deploy is Script {
         );
         vm.stopBroadcast();
 
-        console2.log("ProofPlayBaseDuel deployed:", address(duel));
+        console2.log("Football-duel contract deployed:", address(duel));
         console2.log(
             "Next: configure the verified GenLayer bridge sender, receiver, and resolver."
         );

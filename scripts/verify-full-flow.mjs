@@ -50,4 +50,4 @@ const networkProof = JSON.parse(marker.slice(marker.indexOf(markerPrefix) + mark
 
 console.log("Relaying that exact Studionet result through Base settlement and payout…");
 run(process.execPath, ["contracts/scripts/full-flow.mjs", JSON.stringify(networkProof)]);
-console.log("✓ ProofPlay real-web network flow passed");
+console.log("✓ Football-duel real-web network flow passed");

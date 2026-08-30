@@ -33,4 +33,4 @@ if (diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
 
 const compiled = output.contracts["ProofPlayBaseDuel.sol"].ProofPlayBaseDuel;
 const byteLength = compiled.evm.bytecode.object.length / 2;
-console.log(`ProofPlayBaseDuel compiled (${byteLength} byte deployment bytecode, ${compiled.abi.length} ABI entries).`);
+console.log(`Football-duel contract compiled (${byteLength} byte deployment bytecode, ${compiled.abi.length} ABI entries).`);
