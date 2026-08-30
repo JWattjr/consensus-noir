@@ -16,10 +16,11 @@ has no `set_culprit` function.** That absence is the product.
 | **Contract** | [`0x3133B01d4EB7e1022913dF5fb1219cAE77D3f4a6`](https://genlayer-explorer.vercel.app/address/0x3133B01d4EB7e1022913dF5fb1219cAE77D3f4a6) |
 | **Network** | GenLayer StudioNet — chain `61999`, RPC `https://studio.genlayer.com/api` |
 | **Playable case** | `glasshouse-0217-live` |
-| **Demo video** | _TODO before submission_ |
 | **Runner** | `py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6` |
 
 ---
+
+<!-- Before final submission: add the walkthrough video link to the fact table above. -->
 
 ## Why this needs GenLayer
 
@@ -73,21 +74,23 @@ the only source of a culprit is `gl.vm.run_nondet_unsafe`. A direct test asserts
 
 ## Proof on chain
 
-### Production deployment
+### Production deployment — the contract behind the live app
 
 | Step | Transaction |
 |---|---|
 | Deploy | `0x404196801da41706ac008537b89223bcec4dc8d281902ed92691bf892f36c2c7` |
 | `create_case` | `0x339864e4809f5873055398706e0e85e1333c988f4c906f7ef89b50e9a1a00dd3` |
 | `publish_case` | `0xab1154b0523426d47c7b04eb6bcfd89a392bd2e6910ba7ee0621cbd4ff67c6e9` |
-| `enter_case` | _TODO — run the production lifecycle_ |
-| `reveal_accusation` | _TODO_ |
-| `resolve_case` | _TODO_ |
-| `claim_case` | _TODO_ |
 
-### Full lifecycle, run against real validators
+Case `glasshouse-0217-live` is published and **open for entries** — this is the case a
+reviewer plays. Its own settlement hashes are recorded here once players run it to a
+verdict.
 
-A complete entry → reveal → resolve → **claim** cycle with no mocks, on contract
+### Full lifecycle, already run against real validators
+
+The complete cycle has been exercised end to end on StudioNet with **no mocks** — a
+real leader, real validators, a real consensus verdict and a real payout — on a sibling
+deployment of the identical contract,
 [`0x08219e9d65F14412Df3496b63035d052B9D44005`](https://genlayer-explorer.vercel.app/address/0x08219e9d65F14412Df3496b63035d052B9D44005),
 case `glasshouse-0217-integration`:
 
