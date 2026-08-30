@@ -5,14 +5,13 @@ study a frozen noir case file, commit to a suspect and theory, reveal during a
 fixed window, and share a testnet GEN pool only when validator consensus finds
 the same suspect.
 
-This app is intentionally isolated from the other applications in the
-repository. Its contract, frontend, tests, deployment notes, and generated
-artifacts in this directory are the complete MVP boundary.
+The contract, frontend, tests, deployment notes, and generated artifacts in
+this repository form the complete MVP boundary.
 
 ## Local commands
 
 ```powershell
-# from apps/consensus-noir
+# from the repository root
 genvm-lint check contracts/consensus_noir.py
 python -m pytest tests/direct -v
 $env:CONSENSUS_NOIR_RUN_INTEGRATION = "1"

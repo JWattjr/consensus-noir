@@ -6,7 +6,7 @@ on chain `61999`.
 
 ## Contract checks
 
-From `apps/consensus-noir` (PowerShell):
+From the repository root (PowerShell):
 
 ```powershell
 genvm-lint check contracts/consensus_noir.py --json
