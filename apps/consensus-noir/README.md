@@ -5,9 +5,9 @@ study a frozen noir case file, commit to a suspect and theory, reveal during a
 fixed window, and share a testnet GEN pool only when validator consensus finds
 the same suspect.
 
-This app is intentionally isolated from ProofPlay and Reality Bridge. The
-contract, frontend, tests, deployment notes, and generated artifacts in this
-directory are the complete MVP boundary.
+This app is intentionally isolated from the other applications in the
+repository. Its contract, frontend, tests, deployment notes, and generated
+artifacts in this directory are the complete MVP boundary.
 
 ## Local commands
 
