@@ -44,7 +44,7 @@ export default function WalletLoginButton({ compact = false, className = "" }: W
         <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-72 rounded-3xl border-3 border-primary-900 bg-white p-3 text-left shadow-[4px_4px_0px_0px_#312e81]">
           <p className="text-[10px] font-bold uppercase opacity-60">Connected EVM wallet</p>
           <p className="mt-1 break-all text-xs font-bold">{walletAddress}</p>
-          <p className="mt-3 rounded-2xl bg-pastel-blue p-3 text-[10px] font-bold leading-relaxed">Use Base Sepolia ETH for gas and Base Sepolia test USDC for ProofPlay. Both are test assets with no value.</p>
+          <p className="mt-3 rounded-2xl bg-pastel-blue p-3 text-[10px] font-bold leading-relaxed">This archived prototype uses test assets only. The active submission runs on GenLayer StudioNet.</p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <button type="button" onClick={copyAddress} className="inline-flex items-center justify-center gap-1.5 rounded-full border-2 border-primary-900 bg-pastel-yellow px-3 py-2 text-[10px] font-bold">{copied ? <Check size={12} /> : <Copy size={12} />}{copied ? "Copied" : "Copy"}</button>
             {walletAddress ? <a href={baseExplorerAddress(walletAddress)} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-full border-2 border-primary-900 bg-white px-3 py-2 text-[10px] font-bold">Explorer <ExternalLink size={12} /></a> : null}

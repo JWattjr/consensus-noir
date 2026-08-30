@@ -304,8 +304,8 @@ export default function ProofPlayMvp() {
     if (!baseDuelConfigured) {
       setNotice(
         isPrivateChallenge
-          ? "Preview mode: deploy ProofPlayBaseDuel and set NEXT_PUBLIC_PROOFPLAY_DUEL_ADDRESS to create a private invitation."
-          : "Preview mode: deploy ProofPlayBaseDuel and set NEXT_PUBLIC_PROOFPLAY_DUEL_ADDRESS to enter automatic matchmaking.",
+          ? "Preview mode: configure the duel contract to create a private invitation."
+          : "Preview mode: configure the duel contract to enter automatic matchmaking.",
       );
       return;
     }
@@ -352,8 +352,8 @@ export default function ProofPlayMvp() {
       } else {
         setNotice(
           isPrivateChallenge
-            ? "Private duel created on Base Sepolia. Open the transaction to read its duel ID and share it with your friend."
-            : "Ticket entered into automatic matchmaking on Base Sepolia. Open the transaction to read its duel ID.",
+            ? "Private duel created on the test network. Open the transaction to read its duel ID and share it with your friend."
+            : "Ticket entered into automatic matchmaking on the test network. Open the transaction to read its duel ID.",
         );
       }
     } catch (error) {
@@ -366,7 +366,7 @@ export default function ProofPlayMvp() {
   async function joinDuel() {
     if (!baseDuelConfigured) {
       setNotice(
-        "Preview mode: set NEXT_PUBLIC_PROOFPLAY_DUEL_ADDRESS before joining a Base Sepolia duel.",
+        "Preview mode: configure the duel contract before joining a duel.",
       );
       return;
     }
@@ -397,11 +397,11 @@ export default function ProofPlayMvp() {
       <div className="mx-auto max-w-6xl">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <Link href="/" className="font-display text-2xl font-black tracking-tight sm:text-3xl">
-            ProofPlay<span className="text-primary-500">.</span>
+            Football Duel<span className="text-primary-500">.</span>
           </Link>
           <div className="flex items-center gap-2">
             <span className="rounded-full border-2 border-primary-900 bg-pastel-yellow px-3 py-1.5 text-[10px] font-black uppercase tracking-wide">
-              Base Sepolia + GenLayer
+              Archived test prototype
             </span>
             <WalletLoginButton compact />
           </div>
@@ -510,7 +510,7 @@ export default function ProofPlayMvp() {
                 <h2 className="font-display text-2xl font-black">Automatic bot match</h2>
               </div>
               <p className="mt-2 text-xs font-bold leading-relaxed opacity-70">
-                Lock your ticket and ProofPlay will assign an opponent. You cannot choose the bot, and its ticket stays hidden until settlement.
+                Lock your ticket and the app will assign an opponent. You cannot choose the bot, and its ticket stays hidden until settlement.
               </p>
               <button
                 type="button"
@@ -569,7 +569,7 @@ export default function ProofPlayMvp() {
                 <h2 className="font-display text-2xl font-black">Find an opponent</h2>
               </div>
               <p className="mt-2 text-xs font-bold leading-relaxed opacity-65">
-                Enter the shared queue for this fixture. ProofPlay pairs you automatically with the next eligible player.
+                Enter the shared queue for this fixture. The app pairs you automatically with the next eligible player.
               </p>
               <label className="mt-4 block text-[11px] font-black uppercase tracking-wide">
                 Entry per player (test USDC)

@@ -3,8 +3,8 @@ import { EvmWalletProvider } from "@/components/EvmWalletProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ProofPlay | Head-to-Head Football Tickets",
-  description: "A six-pick football prediction duel on Base Sepolia, resolved by a GenLayer Intelligent Contract on Studionet.",
+  title: "Archived Football Duel",
+  description: "An archived six-pick football prediction prototype.",
 };
 
 export default function RootLayout({

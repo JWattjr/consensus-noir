@@ -25,10 +25,10 @@ export default function AboutPage() {
       <div className="mx-auto max-w-4xl space-y-5">
         <Link href="/" className="text-xs font-bold opacity-60">Back home</Link>
         <section className="bubbly-card bg-white p-6">
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-primary-700">About ProofPlay</p>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-primary-700">Archived football duel</p>
           <h1 className="mt-2 font-display text-4xl font-bold">A football prediction duel, not a pooled market.</h1>
           <p className="mt-3 text-sm font-bold leading-relaxed opacity-70">
-            ProofPlay is a head-to-head football prediction game. Each player creates a six-pick ticket for the same fixture, then both tickets are independently scored against the final match facts. The player with the stronger ticket wins the duel.
+            This is an archived head-to-head football prediction prototype. Each player creates a six-pick ticket for the same fixture, then both tickets are independently scored against the final match facts. The player with the stronger ticket wins the duel. The active submission is Reality Bridge.
           </p>
         </section>
         <section className="grid gap-3 sm:grid-cols-3">
