@@ -224,6 +224,120 @@ Design details: [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md),
 
 ---
 
+---
+
+## Design decisions
+
+The hard part of this contract is not the game loop; it is deciding what must be
+consensus-critical and keeping everything else out of the consensus path. These are the
+tradeoffs that shaped it.
+
+### Evidence had to become settlement-critical, which forced fixed cardinality
+
+Weighting payouts by evidence agreement means `material_evidence_ids` decides money, so
+validators must agree on it — and anything validators must agree on has to be
+reproducible across independent readings.
+
+A free-length "cite the evidence that matters" list is not reproducible. Two honest
+readings of the same dossier routinely differ by one item, and under exact-set equality
+every such difference burns a consensus rotation until the transaction fails. Fixing the
+count at exactly three (`MATERIAL_EVIDENCE_COUNT`) collapses that variance: the model is
+choosing a ranked top-three rather than deciding where a list ends. Players commit to
+exactly three too (`REQUIRED_EVIDENCE_PICKS`), so overlap is an integer in `0..3` and the
+weight is `1 + overlap`, bounded in `1..4`.
+
+The alternative — keep the equality check loose and take the leader's evidence — was
+rejected because it would let a single leader set the payout distribution.
+
+### Validator agreement is scoped to the four fields that move funds
+
+`_same_stable_result` compares `case_id`, `status`, `culprit_id` and
+`material_evidence_ids`. It deliberately does **not** compare `confidence_bucket`,
+`reason_code` or `contradicted_statement_ids`.
+
+Those three are descriptive. `_canonicalize_result` still bounds them — an unknown reason
+code or an ID outside the frozen case is rejected before anything is persisted — but they
+are leader-reported, not agreed. The UI says so in those words rather than presenting them
+as part of a consensus record. Widening the comparison to all seven fields, which an
+earlier revision did, made resolution fail for reasons unrelated to the verdict.
+
+### Nondeterminism is pushed to publication, never resolution
+
+Source URLs are fetched once inside `publish_case`, checked for HTTP 200 and non-empty
+content, hashed, and stored on the case. `_adjudicate` then reads frozen text and never
+touches the network.
+
+This matters twice over. It makes "frozen dossier" literally true — a source that changes
+after publication cannot alter a verdict. And it removes a per-validator network fetch from
+the consensus path, where differing fetch times would produce differing model input and
+break agreement. Publication is a curator action that can simply be retried; resolution
+carries escrow and must not be.
+
+### Payouts conserve exactly, by construction
+
+`escrow × weightᵢ ÷ total_weight` under integer division loses less than one wei per
+winner, so the shortfall is strictly less than the winner count. That remainder is assigned
+one wei each to the lowest-sorted eligible addresses, which makes
+`Σ payouts = total_escrow` an identity rather than an approximation. `_record_payout`
+independently refuses any payout that would push `paid_out` past `total_escrow`.
+
+The production run bears this out: `paid_out` finished at exactly `2000000000000000000`
+of `2000000000000000000`.
+
+### Finality semantics are load-bearing in the interface
+
+Transfers are emitted `on="finalized"`, so GEN genuinely does not move when a transaction
+is merely accepted. An interface that treats acceptance as success would show a settled
+claim while the funds are still unreleased.
+
+The client therefore tracks the full status sequence and reports success only on
+`FINALIZED` **and** only when the leader receipt's `execution_result` is `SUCCESS` — a
+transaction can finalize with a reverted call, which consensus status alone does not tell
+you.
+
+### No balance can be stranded
+
+There is no curator withdraw path anywhere in the contract. Every terminal state releases
+funds to the players who put them in:
+
+| Situation | Release |
+|---|---|
+| Underfilled after the accusation deadline | `cancel_case`, then individual refunds |
+| Validators find the file underdetermined | `VOID`, individual refunds |
+| FINAL verdict nobody accused | flagged at resolution, every entrant refunded |
+| No verdict by the refund deadline | `make_refundable`, individual refunds |
+
+The last is a fixed liveness backstop: repeated `UNRESOLVED` attempts increment a counter
+but never move a deadline, so a case cannot be held open indefinitely by retrying.
+
+### Tests assert the emitted primitive, not a balance
+
+Direct mode does not simulate value movement — it discards **both** payout primitives
+silently. A balance assertion there passes whether or not the contract can actually pay,
+which is exactly how an earlier revision shipped a payout path that emitted a cross-chain
+EVM send instead of a native transfer and moved nothing.
+
+The settlement tests therefore capture the GenVM call the contract emits and assert it is a
+`PostMessage` with the right recipient, value and `on="finalized"`. Real balance movement is
+proven on StudioNet instead, in the hosted test and the production run above.
+
+A separate guard (`tests/direct/test_integration_contract_parity.py`) recomputes the hosted
+test's commitment preimage against the contract's and checks it for undefined names. The
+hosted test performs several funded writes before it reaches a reveal, so a stale commitment
+there would only surface after GEN had moved; the guard catches it in milliseconds.
+
+### Surface
+
+Ten state-changing methods — `create_case`, `publish_case`, `advance_case`, `cancel_case`,
+`make_refundable`, `enter_case`, `reveal_accusation`, `resolve_case`, `claim_case`,
+`refund_case` — and six views.
+
+Owner gating is narrow by design: `create_case` and `publish_case` are curator-only, and
+`cancel_case` is curator-only for an unpublished draft but permissionless once a published
+case turns out to be underfilled. Advancing the lifecycle, requesting the verdict, opening
+the refund branch, claiming and refunding are all permissionless, so the game needs no
+operator after publication and no privileged party can reach the escrow.
+
 ## Limitations
 
 - StudioNet only. GEN here is testnet-only and carries no real-world value.
