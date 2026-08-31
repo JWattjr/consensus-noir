@@ -15,7 +15,7 @@ has no `set_culprit` function.** That absence is the product.
 | **Live app** | https://frontend-nu-one-15.vercel.app/ |
 | **Contract** | [`0x3133B01d4EB7e1022913dF5fb1219cAE77D3f4a6`](https://genlayer-explorer.vercel.app/address/0x3133B01d4EB7e1022913dF5fb1219cAE77D3f4a6) |
 | **Network** | GenLayer StudioNet — chain `61999`, RPC `https://studio.genlayer.com/api` |
-| **Playable case** | `glasshouse-0217-reviewer` (open until 2026-09-29) |
+| **Playable cases** | a 30-day case always open, plus short rolling cases that finish in ~30 min |
 | **Runner** | `py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6` |
 
 ---
@@ -107,13 +107,25 @@ nothing stranded. Both players accused the same suspect but cited different exhi
 this run also demonstrates the weighted split: player 1 matched all three cited exhibits
 (weight 4), player 2 matched one (weight 2).
 
-Cases live on the contract right now:
+### Two dossiers, and how the cases are paced
 
-| Case | Status | Entries close |
-|---|---|---|
-| `glasshouse-0217-reviewer` | **open — play this one** | 2026-09-29 22:35 UTC |
-| `glasshouse-0217-live` | open | 2026-09-01 20:44 UTC |
-| `glasshouse-0217-proof` | resolved and settled | — |
+There are two independent case files — *The Glasshouse at 02:17* and *The Last Edition*,
+a pressroom case with seven exhibits and a different culprit — so the evidence you read is
+not the same puzzle twice.
+
+Pacing is a deliberate tradeoff. A long window is always joinable but cannot be completed
+in one sitting; a short window completes but expires. The contract runs both:
+
+| Case | Purpose |
+|---|---|
+| `glasshouse-0217-reviewer` | Open until 2026-09-29. Always joinable. |
+| `pressroom-0349-*` | Short rolling case, full cycle in ~30 minutes, seeded with two entries so a visitor is player three and `min_players` is already met. |
+| `glasshouse-0217-proof` | Resolved and settled — the production lifecycle proof above. |
+
+`scripts/prepare_rolling_case.mjs` seeds a fresh rolling case with its entries pre-filled;
+`scripts/reveal_seeded.mjs` reveals those players once the window turns, so the public
+theory panel is populated rather than empty. Run the first before a demo or a judging
+session — a rolling case that has already resolved is a record, not something to play.
 
 ### Corroborating run on a separate deployment
 
