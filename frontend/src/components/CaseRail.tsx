@@ -13,7 +13,16 @@ function statusLabel(status: NoirCase["status"]): string {
   return status === "RESOLVABLE" ? "Awaiting verdict" : status.toLowerCase();
 }
 
+function caseLabel(item: NoirCase, featuredCaseId: string | undefined): string {
+  if (item.case_id === featuredCaseId) return "Featured investigation";
+  if (item.status === "RESOLVED") return "Consensus proof";
+  if (item.status === "OPEN") return "Open investigation";
+  return statusLabel(item.status);
+}
+
 export function CaseRail({ cases, selectedId, onSelect }: CaseRailProps) {
+  const featuredCaseId = cases.find((item) => item.status === "OPEN")?.case_id;
+
   return (
     <aside className="case-rail" aria-label="Case discovery">
       <div className="rail-heading">
@@ -38,7 +47,7 @@ export function CaseRail({ cases, selectedId, onSelect }: CaseRailProps) {
               <span className="case-index">{String(index + 1).padStart(2, "0")}</span>
               <span className="case-row-copy">
                 <strong>{item.title}</strong>
-                <span>{item.case_id}</span>
+                <span>{caseLabel(item, featuredCaseId)}</span>
                 <small>
                   <CircleDot size={10} aria-hidden="true" /> {statusLabel(item.status)}
                 </small>

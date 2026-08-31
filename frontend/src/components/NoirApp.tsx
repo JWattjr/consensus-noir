@@ -48,6 +48,25 @@ interface Notice {
   text: string;
 }
 
+function caseStatusRank(caseFile: NoirCase): number {
+  if (caseFile.status === "OPEN") return 0;
+  if (caseFile.status === "REVEAL" || caseFile.status === "RESOLVABLE") return 1;
+  if (caseFile.status === "RESOLVED") return 2;
+  return 3;
+}
+
+function orderCases(caseFiles: NoirCase[]): NoirCase[] {
+  return [...caseFiles].sort((left, right) => {
+    const statusDifference = caseStatusRank(left) - caseStatusRank(right);
+    if (statusDifference !== 0) return statusDifference;
+
+    if (left.status === "OPEN" && right.status === "OPEN") {
+      return right.accusation_deadline - left.accusation_deadline;
+    }
+    return right.resolution_eligibility_time - left.resolution_eligibility_time;
+  });
+}
+
 export function NoirApp() {
   const [cases, setCases] = useState<NoirCase[]>(IS_CONFIGURED ? [] : [DEMO_CASE]);
   const [selectedId, setSelectedId] = useState(DEMO_CASE.case_id);
@@ -77,7 +96,7 @@ export function NoirApp() {
     setLoading(true);
     try {
       const ids = await readCaseIds();
-      const loaded = await Promise.all(ids.map((caseId) => readCase(caseId)));
+      const loaded = orderCases(await Promise.all(ids.map((caseId) => readCase(caseId))));
       setCases(loaded);
       setLoadError(null);
       setSelectedId((current) =>

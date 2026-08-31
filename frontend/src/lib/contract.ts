@@ -163,6 +163,16 @@ function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
+function normaliseEvidence(value: unknown): EvidenceItem[] {
+  return asArray<Record<string, unknown>>(value)
+    .map((item) => ({
+      id: String(item.id ?? ""),
+      // Older demo data used `summary`; deployed cases expose the same field as `text`.
+      summary: String(item.summary ?? item.text ?? ""),
+    }))
+    .filter((item) => item.id.length > 0);
+}
+
 function normaliseResolution(value: unknown): Resolution | null {
   if (!value || typeof value !== "object") return null;
   const raw = value as Record<string, unknown>;
@@ -190,7 +200,7 @@ export function normaliseCase(value: unknown, entries: unknown[] = []): NoirCase
     suspects: asArray<Suspect>(raw.suspects),
     statements: asArray<Statement>(raw.statements),
     timeline: asArray<TimelineEntry>(raw.timeline),
-    evidence: asArray<EvidenceItem>(raw.evidence),
+    evidence: normaliseEvidence(raw.evidence),
     source_urls: asArray<string>(raw.source_urls),
     rubric: String(raw.rubric ?? ""),
     accusation_deadline: valueAsNumber(raw.accusation_deadline),
