@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, Check, Copy, Download, KeyRound, LockKeyhole, RotateCw, Upload, WalletCards } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { NoirCase, NoirEntry } from "@/lib/contract";
 import { NETWORK_NAME, formatGen } from "@/lib/contract";
 import {
@@ -61,6 +61,8 @@ export function Desk({
   const isDemo = Boolean(caseFile.isDemo);
   const theoryBytes = theoryByteLength(theory);
   const deadline = deadlineFor(caseFile);
+  const deskHeading = caseFile.status === "RESOLVED" ? "Review the verdict" : "Make your accusation";
+  const poolAfterEntry = caseFile.total_escrow_wei + caseFile.entry_stake_wei;
 
   // Gate on the clock as well as the stored status: a case still reads OPEN
   // until somebody calls advance_case, but entries revert after the deadline.
@@ -97,12 +99,6 @@ export function Desk({
     suspectId.length > 0 && theoryBytes >= 300 && theoryBytes <= 2000 &&
     picksComplete && salt.length >= 32;
   const canReveal = Boolean(localAccusation && entry && !entry.revealed && revealOpen && !isDemo && !wrongNetwork);
-
-  const payout = useMemo(() => {
-    const pool = caseFile.total_escrow_wei + caseFile.entry_stake_wei;
-    const revealed = Math.max(1, caseFile.entries.filter((item) => item.revealed).length);
-    return { alone: pool, shared: pool / BigInt(revealed + 1) };
-  }, [caseFile]);
 
   useEffect(() => {
     const task = window.setTimeout(() => {
@@ -179,7 +175,7 @@ export function Desk({
   return (
     <aside className="desk" aria-label="Player desk">
       <div className="desk-heading">
-        <div><span className="eyebrow">Your desk</span><h2>Make your accusation</h2></div>
+        <div><span className="eyebrow">Your desk</span><h2>{deskHeading}</h2></div>
         <WalletCards size={18} strokeWidth={1.5} aria-hidden="true" />
       </div>
 
@@ -270,10 +266,9 @@ export function Desk({
             <span className="eyebrow">Before you sign</span>
             <dl>
               <div><dt>Your stake</dt><dd>{formatGen(caseFile.entry_stake_wei)} GEN</dd></div>
-              <div><dt>Pool if you join</dt><dd>{formatGen(payout.alone)} GEN</dd></div>
+              <div><dt>Pool after you join</dt><dd>{formatGen(poolAfterEntry)} GEN</dd></div>
               <div><dt>Players in</dt><dd>{caseFile.player_count}/{caseFile.max_players}</dd></div>
-              <div><dt>If you win alone</dt><dd>{formatGen(payout.alone)} GEN</dd></div>
-              <div><dt>If others are right too</dt><dd>about {formatGen(payout.shared)} GEN</dd></div>
+              <div><dt>Your final share</dt><dd>Varies by winners and evidence match</dd></div>
             </dl>
             <ul className="risk-list">
               <li><strong>Wrong suspect:</strong> you lose your whole stake to the accusers who were right.</li>
@@ -343,7 +338,11 @@ export function Desk({
                 ? "No revealed accusation matched the final finding, so every entrant recovers their full stake."
                 : iWon
                   ? "Correct accusers split the pool, weighted by how many of the validators' cited exhibits they picked."
-                  : entry?.revealed
+                  : !wallet
+                    ? "This case is resolved. Connect a wallet that entered it to check its settlement."
+                    : !entry
+                      ? "This wallet did not enter this case. Connect a participating wallet to view its settlement."
+                    : entry.revealed
                     ? "Your accusation did not match the final finding, so your stake goes to the accusers who were right."
                     : "You did not reveal in time, so this entry forfeits its stake to the correct accusers."}
           </p>
