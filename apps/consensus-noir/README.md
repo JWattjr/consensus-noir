@@ -122,10 +122,20 @@ in one sitting; a short window completes but expires. The contract runs both:
 | `pressroom-0349-*` | Short rolling case, full cycle in ~30 minutes, seeded with two entries so a visitor is player three and `min_players` is already met. |
 | `glasshouse-0217-proof` | Resolved and settled — the production lifecycle proof above. |
 
-`scripts/prepare_rolling_case.mjs` seeds a fresh rolling case with its entries pre-filled;
-`scripts/reveal_seeded.mjs` reveals those players once the window turns, so the public
-theory panel is populated rather than empty. Run the first before a demo or a judging
-session — a rolling case that has already resolved is a record, not something to play.
+Three scripts run that cycle, and they are meant to be used together:
+
+| Script | Does |
+|---|---|
+| `prepare_rolling_case.mjs` | Seeds a fresh short case and enters two players |
+| `reveal_seeded.mjs` | Reveals them when the window turns, so the public theory panel is populated rather than empty |
+| `finish_rolling_case.mjs` | Drives the case to a clean terminal state |
+
+The third is not optional. A rolling case nobody finishes stalls with escrow locked, and
+once its refund deadline passes it can never reach a verdict at all — every refresh would
+otherwise leave another dead case in the rail. `finish_rolling_case.mjs` takes whichever
+route the contract still allows: advance and resolve, or, past the deadline, the
+`make_refundable` backstop followed by individual refunds. Every call it makes is
+permissionless, so this is housekeeping anyone could do rather than a curator privilege.
 
 ### Corroborating run on a separate deployment
 
