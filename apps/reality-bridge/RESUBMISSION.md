@@ -58,6 +58,8 @@ receipt scheme changed.
 | --- | --- |
 | Contract | `0x9fD62230aA1149bf443C0a447ffe9D1b2cF4b87E` (StudioNet, chain 61999) |
 | Deployment transaction | `0x88d553046d34a8bb7aee59b36b047231746d61c98c8a85e42ad9f3c5ef4ae881` |
+| Hosted client | [reality-bridge-beta.vercel.app](https://reality-bridge-beta.vercel.app) — serves the corrected contract |
+| Independent verifier | `python genlayer/scripts/verify_submission.py` — **12/12 checks passed** against live StudioNet state, Blockstream evidence and the hosted bundle |
 
 **Demonstrated on chain, round 2 on that contract.** The target block landed
 just late, which makes the round a direct proof rather than an assertion:
@@ -83,8 +85,11 @@ Settlement followed: the runner had revealed `YES` against `NO` and was
 eliminated, the surviving seat took the pool, and on-chain `claimed_amount`
 equals `pool` at `0.020000 GEN`.
 
-Round 3 is open for you to play: block `965094`, joins close
-`2026-09-01T22:39:51Z`, resolvable `2026-09-02T00:24:51Z`.
+Round 3 is the current deadline-bound public round: block `965094`, joins close
+`2026-09-01T22:39:51Z`, resolvable `2026-09-02T00:24:51Z`. The hosted client
+reads its status from StudioNet; if that real join window has elapsed, the
+operator runbook gives the exact command for publishing a fresh future block
+checkpoint rather than presenting an expired round as a fixture.
 
 Four contract tests cover the property directly, including one that resolves a
 panel long after its instant and asserts the receipt still commits to the

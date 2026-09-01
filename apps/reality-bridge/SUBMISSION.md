@@ -16,7 +16,7 @@ from a command. Where something is unverified, it says so.
 | Deployment transaction | `0x88d553046d34a8bb7aee59b36b047231746d61c98c8a85e42ad9f3c5ef4ae881` |
 | Published round | `1` on the corrected contract — one panel, entry `0.01 GEN` |
 | Frontend URL | [reality-bridge-beta.vercel.app](https://reality-bridge-beta.vercel.app) — production, verified |
-| Independent verification | `python genlayer/scripts/verify_submission.py` — 11/12 against live chain and source data; the one failure is the hosted client's environment variable, described below |
+| Independent verification | `python genlayer/scripts/verify_submission.py` — 12/12 against the live chain, source data and hosted client |
 
 Per-transaction hashes, deadlines and the panel threshold are in the manifest.
 Do not assume a round listed there is still joinable: rounds carry real
@@ -116,8 +116,9 @@ On-chain `claimed_amount` equals `pool` at `0.020000 GEN`.
 | Resolution (the one that decided) | `0xa412a8141fc29f85379c9b37fcf41cb707c30c9d8e56566ddf0f39064775dae6` |
 | Claim `0.020000 GEN` | `0x9a8d0400dec4f19b3e781976decf4c6902176fee6f276e1387a40eb7acb32e8d` |
 
-Round 3 is published and **open for a reviewer to join**: block `965094`,
-joins close `2026-09-01T22:39:51Z`, resolvable `2026-09-02T00:24:51Z`.
+Round 3 is the latest published round: block `965094`, joins close
+`2026-09-01T22:39:51Z`, resolvable `2026-09-02T00:24:51Z`. Its joinability is
+read from StudioNet rather than asserted permanently in this document.
 
 ### The previous deployment, and what its evidence does and does not prove
 
@@ -279,11 +280,12 @@ published contract:
   bend to the player's choice, and no live-network vocabulary.
 - Mobile at 375 px: no horizontal overflow, no touch target under 44 px.
 
-These observations were made against the previous deployment's hosted
-configuration. The browser behaviour is unchanged by the resolution-timing fix,
-which touched the contract, the published question and the evidence panel's
-fields; the settled-panel view now additionally shows *Evidence observed* and
-*Answered as of*, sourced from the same stored fields the receipt commits to.
+These observations were originally made against the previous deployment's
+hosted configuration. The resolution-timing fix touched the contract, the
+published question and the evidence panel's fields; the settled-panel view now
+additionally shows *Evidence observed* and *Answered as of*, sourced from the
+same stored fields the receipt commits to. The current production bundle is
+independently checked below against the corrected contract address.
 
 ## How to check this submission without trusting it
 
@@ -313,27 +315,18 @@ PASS  round 2 panel 1: settled on anchored evidence
 PASS  round 2 panel 1: stored timestamp matches the live source
 PASS  round 2 panel 1: outcome follows the evidence, not the caller
 PASS  round 2 panel 1: resolution ran after the block existed
-FAIL  hosted client is still serving a superseded deployment
-11/12 checks passed
+PASS  hosted client serves the contract this repository documents
+12/12 checks passed
 ```
 
-**The failing check is real and is reported here rather than hidden.** The
-contract, the evidence and the settlement are correct; the hosted client at
-`reality-bridge-beta.vercel.app` is still built against the pre-fix
-deployment, because its environment variable has not been repointed at the
-redeployed contract. It is a one-variable hosting change:
+The hosted-client check reads the deployed JavaScript bundle and requires it to
+contain the same corrected contract address documented by the manifest. It
+therefore cannot be satisfied by editing this file.
 
-```text
-NEXT_PUBLIC_REALITY_BRIDGE_CONTRACT=0x9fD62230aA1149bf443C0a447ffe9D1b2cF4b87E
-```
-
-Until that is done, judge the protocol from the chain and the test suites
-rather than from the hosted page. The verifier reads the deployed JavaScript
-bundle to determine this, so it cannot be satisfied by editing documentation.
-
-A reviewer who prefers to play rather than read can join **round 3**, which is
-open. A reviewer who prefers to read code should start with the reading list
-below.
+A reviewer who prefers to play rather than read can use the latest public round
+while its on-chain join window is open; the hosted client shows that live state
+and [`HANDOFF.md`](HANDOFF.md) gives the fresh-round command. A reviewer who
+prefers to read code should start with the reading list below.
 
 **Not provided:** a screen recording. The evidence above is reproducible from
 a command; a video is not, and would be weaker for anything a reviewer wants

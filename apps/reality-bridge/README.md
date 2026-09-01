@@ -15,7 +15,7 @@ The application is intentionally small enough to inspect, but it is not a fronte
 | Hosted client | [reality-bridge-beta.vercel.app](https://reality-bridge-beta.vercel.app) |
 | Settled proof round | Round `2`: two wallets, one future-resolving panel, complete settlement and claims |
 | Consensus result | `NO` / `FINAL_EVIDENCE`, receipt `d0530d271059263a7f575f02515a283fa96e629c1946609e74e80eded80a140f` |
-| Open round to play | Round `3` |
+| Latest public round | Round `3` — deadline-bound; the client reads its live status from StudioNet |
 | Pinned GenVM runner | `py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6` |
 
 ### Check it without trusting it
@@ -24,7 +24,7 @@ The application is intentionally small enough to inspect, but it is not a fronte
 python genlayer/scripts/verify_submission.py
 ```
 
-Reads the deployed contract from StudioNet, re-fetches each resolved panel's evidence from its public source, recomputes every stored receipt from the pre-image documented in [`specs/PRODUCT_SPEC.md`](specs/PRODUCT_SPEC.md), and re-derives each outcome from the evidence's own timestamp. `PASS`/`FAIL` per check, non-zero exit on any failure. It reads no stored answer and compares it to itself, and it reads the hosted client's deployed JavaScript rather than trusting this file. Currently **11/12**: the single failure is that the hosted client's environment variable still points at the pre-fix deployment, which is recorded openly in [`SUBMISSION.md`](SUBMISSION.md) rather than papered over.
+Reads the deployed contract from StudioNet, re-fetches each resolved panel's evidence from its public source, recomputes every stored receipt from the pre-image documented in [`specs/PRODUCT_SPEC.md`](specs/PRODUCT_SPEC.md), and re-derives each outcome from the evidence's own timestamp. `PASS`/`FAIL` per check, non-zero exit on any failure. It reads no stored answer and compares it to itself, and it reads the hosted client's deployed JavaScript rather than trusting this file. The current live result is **12/12 checks passed**, including the production bundle-to-contract check.
 
 Round 2 is worth looking at closely, because the target block landed 42 seconds *after* the panel's instant. Resolution ran later still, when the live chain tip had already passed the target — so an implementation that read the current tip would have answered `YES`. This one compares the block's own header timestamp against the panel's instant and answers `NO`. That margin is the difference between a panel whose outcome depends on when someone calls it and one whose outcome does not. See *Caller-chosen outcomes through resolution timing* in [`SECURITY.md`](SECURITY.md).
 

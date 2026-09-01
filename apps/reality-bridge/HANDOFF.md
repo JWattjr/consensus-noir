@@ -15,7 +15,7 @@ the submission claims and the evidence behind it, read
 | Publisher key | `genlayer/.deployer.key` — **git-ignored, local to the machine that deployed** |
 | Round 1 | expired unjoined; retained as historical manifest data |
 | Round 2 | `SETTLED` — the anchored-resolution evidence, see `SUBMISSION.md` |
-| Round 3 | published open for a reviewer to play |
+| Round 3 | latest published round; deadline-bound, so check its live state before presenting it as joinable |
 
 An earlier deployment, `0x4DE4c2aFC908fd744b65Fe8361FEE4Dc1C5c8CA9`, carried
 rounds 1–4 under the **defective tip-height question**. It is retained for
