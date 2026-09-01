@@ -45,6 +45,12 @@ jobs:
       - name: Install
         run: python -m pip install -r genlayer/requirements.txt
 
+      # genlayer-test 0.29.2 requests the legacy asset name, while the pinned
+      # GenVM release publishes that bundle as genvm-runners-all.tar.xz. Seed
+      # the exact verified archive into gltest's expected cache path first.
+      - name: Cache the pinned GenVM runner bundle
+        run: python genlayer/scripts/cache_genvm_bundle.py
+
       - name: Direct tests
         run: python -m pytest genlayer/tests/direct -q
 
@@ -69,7 +75,10 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          # npm 10 rejects this cross-platform lockfile's WASI-only optional
+          # packages on Linux. npm 11 resolves it consistently with Vercel and
+          # with the lockfile generator used by the project.
+          node-version: "24"
           cache: npm
           cache-dependency-path: apps/reality-bridge/frontend/package-lock.json
 
