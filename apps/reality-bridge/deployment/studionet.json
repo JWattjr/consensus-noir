@@ -8,11 +8,11 @@
   "publisher": "0xf19AA039E52fC65A23f2f98FBA15081244C32d4d",
   "transactions": {
     "deploy": "0x88d553046d34a8bb7aee59b36b047231746d61c98c8a85e42ad9f3c5ef4ae881",
-    "register_source": "0x8c18a63859ac823673e27a3f2155b6d400b88b24872255300fdf85a977c59345",
-    "register_fixture_source": "0x8ff81a66cd70a7de1437f3fccb326e98e03756ea02440f9e6d22a4b1d7efae7d",
-    "create_round": "0x41dc8294dc6634f5d1d7fb61959c09da83f11104abcdbc78d6168d42c095df47",
-    "add_tile": "0x010ca2374815fc775df7736f6297bb185696a06086ff05a30fd2124103941724",
-    "open_round": "0xd7b3fefb7c7111dd28dfcf3f577b42e905800fd97d9d98f23858a4d29e993910"
+    "register_source": "0xd5d5a7736fa0ba80632d382057c27cc4460e4f6346b3a6f0a7e4b000adfc6651",
+    "register_fixture_source": "0xa7f976eccbd145d3dfa87f1fb9381890c47be3b89c8038144212db7828748557",
+    "create_round": "0x7ef5d99dd80eebca8e7db42a88d6de1ae33207ac2f3a58942311db25b8d0148e",
+    "add_tile": "0x3a8e129533b393a8f422da6e5f4d05ad32f1aa1a6a7c527dc4f430f0a5c7c940",
+    "open_round": "0xbe4c562d3be0a108024ae494f91cb3ecd91faab73e156f1330b2f7eac1564daa"
   },
   "deployedAt": "2026-09-01T17:29:31+00:00",
   "rounds": [
@@ -39,6 +39,56 @@
         "create_round": "0x41dc8294dc6634f5d1d7fb61959c09da83f11104abcdbc78d6168d42c095df47",
         "add_tile": "0x010ca2374815fc775df7736f6297bb185696a06086ff05a30fd2124103941724",
         "open_round": "0xd7b3fefb7c7111dd28dfcf3f577b42e905800fd97d9d98f23858a4d29e993910"
+      }
+    },
+    {
+      "roundId": 2,
+      "entryWei": "10000000000000000",
+      "joinDeadline": 1788295271,
+      "joinDeadlineIso": "2026-09-01T20:41:11+00:00",
+      "commitWindowSeconds": 120,
+      "revealGraceSeconds": 60,
+      "choiceDeadline": 1788295871,
+      "choiceDeadlineIso": "2026-09-01T20:51:11+00:00",
+      "resolutionTime": 1788295931,
+      "resolutionTimeIso": "2026-09-01T20:52:11+00:00",
+      "terminalDeadline": 1788381491,
+      "terminalDeadlineIso": "2026-09-02T20:38:11+00:00",
+      "panelWindowSeconds": 600,
+      "evidenceUrl": "https://blockstream.info/api/blocks/965083",
+      "question": "Was Bitcoin block 965083 mined at or before 2026-09-01T20:52:11+00:00?",
+      "blockHeightAtPublish": 965082,
+      "targetBlockHeight": 965083,
+      "evidenceAnchor": "block header timestamp, compared against resolutionTime",
+      "transactions": {
+        "create_round": "0xba3ab50d39942ec0d040b7097f45d70e1485de68e5cbec230800ff074f031e38",
+        "add_tile": "0x7ec09907ba44d1a7c32d140d30cc9fe97c73268a9e6b7f0f2335167811ce0e5b",
+        "open_round": "0xbe87e283312bc56b747a5fe0ff421684ebeb243b38bab5f0543b5489730000a3"
+      }
+    },
+    {
+      "roundId": 3,
+      "entryWei": "10000000000000000",
+      "joinDeadline": 1788302391,
+      "joinDeadlineIso": "2026-09-01T22:39:51+00:00",
+      "commitWindowSeconds": 1800,
+      "revealGraceSeconds": 900,
+      "choiceDeadline": 1788307791,
+      "choiceDeadlineIso": "2026-09-02T00:09:51+00:00",
+      "resolutionTime": 1788308691,
+      "resolutionTimeIso": "2026-09-02T00:24:51+00:00",
+      "terminalDeadline": 1788381591,
+      "terminalDeadlineIso": "2026-09-02T20:39:51+00:00",
+      "panelWindowSeconds": 5400,
+      "evidenceUrl": "https://blockstream.info/api/blocks/965094",
+      "question": "Was Bitcoin block 965094 mined at or before 2026-09-02T00:24:51+00:00?",
+      "blockHeightAtPublish": 965082,
+      "targetBlockHeight": 965094,
+      "evidenceAnchor": "block header timestamp, compared against resolutionTime",
+      "transactions": {
+        "create_round": "0x7ef5d99dd80eebca8e7db42a88d6de1ae33207ac2f3a58942311db25b8d0148e",
+        "add_tile": "0x3a8e129533b393a8f422da6e5f4d05ad32f1aa1a6a7c527dc4f430f0a5c7c940",
+        "open_round": "0xbe4c562d3be0a108024ae494f91cb3ecd91faab73e156f1330b2f7eac1564daa"
       }
     }
   ],

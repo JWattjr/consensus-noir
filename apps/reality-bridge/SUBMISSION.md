@@ -68,6 +68,57 @@ moves no deadline, instead of resolving to an outcome.
 Receipts are versioned `reality-bridge-evidence-v2`; a v1 receipt cannot be
 mistaken for a v2 one.
 
+### Round 2: the fix demonstrated on chain, with the margin that proves it
+
+Round 2 on the published contract was played to settlement by two funded
+wallets on 2026-09-01. It is the clearest evidence that resolution no longer
+depends on when it is called, because the target block landed *just* late:
+
+| | |
+| --- | --- |
+| Question | Was Bitcoin block **965083** mined at or before **2026-09-01T20:52:11Z**? |
+| Evidence | `https://blockstream.info/api/blocks/965083` |
+| Block 965083 header timestamp | **20:52:53Z** -- 42 seconds *after* the panel's instant |
+| Stored `observed_at` | `1788295973` |
+| Outcome | **NO**, `FINAL_EVIDENCE` |
+| Resolution actually ran at | 20:53:40Z (`resolved_at` 1788296020), after the block existed |
+| Receipt | `d0530d271059263a7f575f02515a283fa96e629c1946609e74e80eded80a140f` |
+
+**This is the defect and the fix in one round.** By the time resolution ran,
+the live tip had already passed 965083. The previous code read the tip and
+would have answered **YES**. The corrected code compares the block's own
+header timestamp against the panel's instant, sees it is 42 seconds late, and
+answers **NO**. The caller's clock moved on; the outcome did not.
+
+The retryable path also ran for real. The first two resolution attempts landed
+before block 965083 existed and returned `UNRESOLVED`:
+
+```text
+21:52:34  resolve_tile attempt 1: ACCEPTED   -> panel still PENDING
+21:53:58  resolve_tile attempt 2: ACCEPTED   -> panel still PENDING
+21:55:10  resolve_tile attempt 3: ACCEPTED   -> outcome=NO observed_at=1788295973
+```
+
+The stored `attempts` counter is `1`, confirming the two unresolved attempts
+changed no state and moved no deadline, exactly as specified.
+
+Settlement followed the rules: the runner had revealed `YES` against an
+outcome of `NO` and was `ELIMINATED`; the surviving seat took the whole pool.
+On-chain `claimed_amount` equals `pool` at `0.020000 GEN`.
+
+| Step | Transaction |
+| --- | --- |
+| Join (runner `0xB18920bc...`) | `0x5e5aa9ecdc1cbd664e1f0e24193f9944609267a3981b8d2549c8a9959c71ccf1` |
+| Join (survivor `0xeB1f0C85...`) | `0x6e2ce8379e483b6ae6bc5115f3c990af02727b735135480f356a1411ff9f9fbe` |
+| Start (permissionless) | `0x3709e56f115cb0e173be4c2b1c6eeb6fe295e6c22cf531b2f4402ea585ec2588` |
+| Commit `YES` | `0xd57c10ce3e4afcaa7140afccd64e3ade4dad8c7250c786b4b5a2a54bc41b5b20` |
+| Reveal `YES` | `0x6a9f29f7e856b5c52fb972930765fef0e2b3a9e1bfa6cff4bfdaa9d0d1de160b` |
+| Resolution (the one that decided) | `0xa412a8141fc29f85379c9b37fcf41cb707c30c9d8e56566ddf0f39064775dae6` |
+| Claim `0.020000 GEN` | `0x9a8d0400dec4f19b3e781976decf4c6902176fee6f276e1387a40eb7acb32e8d` |
+
+Round 3 is published and **open for a reviewer to join**: block `965094`,
+joins close `2026-09-01T22:39:51Z`, resolvable `2026-09-02T00:24:51Z`.
+
 ### The previous deployment, and what its evidence does and does not prove
 
 Rounds 1-4 were published on `0x4DE4c2aFC908fd744b65Fe8361FEE4Dc1C5c8CA9`, the deployment that carried the
