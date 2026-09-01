@@ -271,7 +271,7 @@ interface states this wherever a receipt is shown.
 
 ## Non-goals for this release
 
-- Mainnet or real-value play.
+- Non-StudioNet or real-value play.
 - Confidential persistent state.
 - Player-created rounds.
 - Cross-chain escrow or bridge messaging.

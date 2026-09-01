@@ -37,7 +37,7 @@ the contract's first line.
 python -m pytest genlayer/tests/direct -q
 ```
 
-49 tests, about 3 seconds. While it runs, call out the three that matter most:
+56 tests, about 3 seconds. While it runs, call out the three that matter most:
 
 - `test_missed_reveal_hands_the_same_panel_to_the_next_runner` — the liveness
   bug that made the old build unplayable.
@@ -98,7 +98,7 @@ npm --prefix frontend run dev
 **a. Network identity.** The pill reads *GenLayer StudioNet*; the footer reads
 *chain 61999*. Search the page for any other chain id — nothing.
 
-**b. Wrong network.** Switch the wallet to Ethereum mainnet. A red `role="alert"`
+**b. Wrong network.** Switch the wallet to an unsupported network. A red `role="alert"`
 banner appears, every write button disables with a reason, and a
 *Switch to GenLayer StudioNet* button is offered. Switch back.
 
@@ -160,3 +160,23 @@ address, publisher, every transaction hash and the round's real deadlines.
 > "StudioNet only. Every rule in the spec is enforced by the contract, every
 > permissionless path has a button, and nothing is called confirmed until the
 > chain says so."
+
+---
+
+## Completed hosted evidence — round 4
+
+The two-wallet lifecycle was completed against
+[`https://reality-bridge-beta.vercel.app`](https://reality-bridge-beta.vercel.app)
+on StudioNet (`61999`) using the published contract
+`0x4DE4c2aFC908fd744b65Fe8361FEE4Dc1C5c8CA9`. Wallet 1 joined, committed and
+revealed `YES`; wallet 2 joined, started the round and requested permissionless
+resolution. The panel settled `YES` with reason `FINAL_EVIDENCE` and receipt
+`77839f48ea5854f466c6ff6ffbfa5de5a6b176bad3503173158316da44c23f4c`.
+
+The finalized claim transactions paid `0.016 GEN` to wallet 1 and `0.004 GEN`
+to wallet 2. The complete transaction list and hashes are in
+[`SUBMISSION.md`](SUBMISSION.md) and `deployment/studionet.json`.
+
+This section is an on-chain evidence record, not a video: the connected browser
+surface did not expose a recorder, so `recordedDemonstration` remains `false`
+until an actual uncut capture is attached.

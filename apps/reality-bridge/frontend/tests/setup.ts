@@ -29,10 +29,25 @@ if (!globalThis.URL.createObjectURL) {
   globalThis.URL.revokeObjectURL = vi.fn();
 }
 
+// No test may touch the network. The app reads a wallet balance from the
+// StudioNet RPC as soon as a wallet is connected, so without this the suite
+// makes real requests to a shared simulator — slow, flaky under parallel
+// load, and dependent on someone else's uptime. Tests that exercise a
+// request stub `fetch` themselves; this default catches everything else.
 beforeEach(() => {
   window.localStorage.clear();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: unknown) => {
+      throw new Error(
+        `Unexpected network request in a test: ${String(input)}. ` +
+          "Stub fetch in the test that needs it.",
+      );
+    }),
+  );
 });
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
 });

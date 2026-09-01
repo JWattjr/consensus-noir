@@ -1,8 +1,10 @@
 # Reality Bridge — handoff
 
 The build is complete and every offline check passes. The source is committed,
-round 3 is published on StudioNet, and the frontend is hosted. What remains is
-the funded-wallet journey and its uncut recording.
+round 4 is published on StudioNet, the frontend is hosted, and the funded
+two-wallet journey has completed on the public URL. The only item not captured
+by this environment is an uncut screen recording; the on-chain evidence is
+recorded below and in `SUBMISSION.md`.
 
 Read [`SUBMISSION.md`](SUBMISSION.md) for the full picture and
 [`QA.md`](QA.md) for the hands-on procedures. This file is only the remaining
@@ -17,13 +19,15 @@ work.
 | Publisher key | `genlayer/.deployer.key` — **git-ignored, local to the machine that deployed** |
 | Published round 1 | expired unjoined; retained as historical manifest data |
 | Published round 2 | expired unjoined; retained as historical manifest data |
-| Published round 3 | `OPEN`, one panel, future-resolving Bitcoin question |
-| Git | source and hosted status committed as `a5c6d31`, `5305d48`, `9198aab`, and `61c139e` |
+| Published round 3 | historical `OPEN` round with one unclaimed seat; retained for auditability |
+| Published round 4 | `SETTLED`, one panel, two seats, outcome `YES`, both claims paid |
+| Git | source, hosted status, and the round-4 evidence are committed in this repository |
 | `frontendUrl` in the manifest | `https://reality-bridge-beta.vercel.app` |
 
-Passing now: contract lint + schema (28 methods), 56 direct tests, 90 frontend
+Passing now: contract lint + schema (28 methods), 56 direct tests, 104 frontend
 tests, typecheck, lint, production build, `npm audit` clean, the hosted
-StudioNet integration journey (192 s), and the public URL smoke check.
+StudioNet integration journey (192 s), the public URL smoke check, and the
+signed two-wallet round-4 journey.
 
 ## Task 1 — Commit the source (done)
 
@@ -46,14 +50,26 @@ a tracked secret.
 
 ## Task 2 — Publish a fresh, joinable round (done)
 
-Rounds carry real deadlines and expire. Rounds 1 and 2 are past their join
-windows; round 3 is the current public round.
+Rounds carry real deadlines and expire. Rounds 1–3 are historical; round 4 is
+the settled public round that carries the payout evidence. Round 5 was
+published to verify the `--quick` schedule and expired unjoined — it is
+historical too. **Round ids 1–5 are used; start at 6.**
 
 **If you are on the machine that holds `genlayer/.deployer.key`:**
 
 ```bash
-python genlayer/scripts/deploy_studionet.py --contract 0x4DE4c2aFC908fd744b65Fe8361FEE4Dc1C5c8CA9 --round-id 3 --join-window 1200 --commit-window 300 --panel-window 600 --reveal-grace 120
+python genlayer/scripts/deploy_studionet.py --contract 0x4DE4c2aFC908fd744b65Fe8361FEE4Dc1C5c8CA9 --round-id 6 --join-window 1200 --commit-window 300 --panel-window 600 --reveal-grace 120
 ```
+
+For a demo you intend to play through in one sitting, `--quick` replaces every
+window flag with a schedule that is resolvable about five and a half minutes
+after publishing:
+
+```bash
+python genlayer/scripts/deploy_studionet.py --contract 0x4DE4c2aFC908fd744b65Fe8361FEE4Dc1C5c8CA9 --round-id 6 --quick
+```
+
+Have both wallets funded and connected first — joins close three minutes in.
 
 **If you are not** — the key cannot be recovered, so deploy fresh:
 
@@ -97,22 +113,51 @@ The URL is recorded and verified in:
 "frontendUrl": "https://reality-bridge-beta.vercel.app"
 ```
 
-## Task 4 — Two-wallet journey against the public URL
+## Task 4 — Two-wallet journey against the public URL (done)
 
-This is the last unverified requirement. It must run against the **hosted
-URL**, not localhost, with two real wallet profiles.
+The journey ran against the **hosted URL**, not localhost, with two real wallet
+profiles on StudioNet chain `61999`. Round 4 settled `YES`; both claims were
+accepted and the on-chain `claimed_amount` equals the round pool.
+
+Hosted URL: [`https://reality-bridge-beta.vercel.app`](https://reality-bridge-beta.vercel.app)
+
+| Step | Wallet / transaction |
+| --- | --- |
+| Wallet 1 joined | `0x957dfe74cbe381eeb16d48fb23202d1f824d9831ec25fa6afcdc6071a542e13b` |
+| Wallet 2 joined | `0xcf3b802c4f45bbd731ee5cbd43d652a8c3354f168e3a300722766f610946a7ff` |
+| Round started (wallet 2) | `0x979abe50000431985f4b3451ef65f2de5a292f87a1e41f3cbb193b591e96cffe` |
+| Wallet 1 committed `YES` | `0xa8056890ce385a68da7bb5326b101fba5d4e5678996cb09f66297e2e5f9c27bf` |
+| Wallet 1 revealed `YES` | `0x347f511c68e334c955feb81740e469e3c3bab3d53a5798f4c8527aa6142e4b6b` |
+| Permissionless resolution requested (wallet 2) | `0x2c3c6bc33f3c37ebd407b4f0ed1d6eda0db37f4c21703d9e961ea0df71eb4994` |
+| Wallet 1 claimed `0.016 GEN` | `0x717b661179c9b59809241686f87f9d9f72f22fd1b88d638cae8a9d5f34dfa04e` |
+| Wallet 2 claimed `0.004 GEN` | `0x1ec88863e5d7c7a3d3f1b60ddf514c54552a5df395a0badcaa4a575843c6fa2a` |
+
+Independent `show_round.py 4` reads confirmed `SETTLED`, panel outcome `YES`,
+reason `FINAL_EVIDENCE`, one attempt, evidence receipt
+`77839f48ea5854f466c6ff6ffbfa5de5a6b176bad3503173158316da44c23f4c`, pool
+`0.020 GEN`, and `claimed_amount == pool`. The global contract still shows a
+historical `0.010 GEN` reserve from round 3's unclaimed seat; that is unrelated
+to round 4's fully claimed pool.
+
+The connected browser surface has no video recorder, so this is a textual and
+on-chain evidence record rather than an uncut video. Keep
+`recordedDemonstration` false until an actual recording is attached.
+
+The original manual setup is retained below for rerunning a fresh round.
 
 Set up each wallet on StudioNet — chain `61999` (`0xf22f`), RPC
 `https://studio.genlayer.com/api`, symbol `GEN`, 18 decimals. The app's
 *Switch to GenLayer StudioNet* button does this.
 
-Fund each (StudioNet has no faucet page, only this RPC method):
+Fund each. The app offers a **Get test GEN** button whenever a connected
+wallet cannot cover the entry; the equivalent by hand (StudioNet has no faucet
+page, only this RPC method) is:
 
 ```bash
 curl -s -X POST https://studio.genlayer.com/api -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"sim_fundAccount","params":["0xYOUR_ADDRESS",5000000000000000000],"id":1}'
 ```
 
-Then walk the journey, recording it uncut:
+Then walk the journey (record it uncut if a recorder is available):
 
 1. Wallet A joins — read the pre-signature disclosure aloud before signing.
 2. Wallet B joins.
@@ -137,9 +182,10 @@ python genlayer/scripts/show_round.py --watch
 lag: authoritative reads use the finalized variant, so the board trails an
 accepted transaction briefly.
 
-After the wallet journey is recorded, update `SUBMISSION.md` and set
-`recordedDemonstration` to `true` in the manifest. `frontendUrlVerified` is
-already `true`.
+After an actual uncut recording is attached, update `SUBMISSION.md` and set
+`recordedDemonstration` to `true` in the manifest. Until then it remains
+`false`; the signed journey itself is complete and already recorded in the
+manifest.
 
 ## Gotchas that will otherwise waste your time
 
@@ -181,7 +227,7 @@ python -m pytest genlayer/tests/direct -q                 # 56 passed
 GENVMROOT=.genvmroot genvm-lint check genlayer/contracts/reality_bridge.py
 npm --prefix frontend run typecheck
 npm --prefix frontend run lint
-npm --prefix frontend run test                            # 90 passed
+npm --prefix frontend run test                            # 104 passed
 npm --prefix frontend run build
 npm --prefix frontend audit --audit-level=high            # 0 vulnerabilities
 cd genlayer && python -m pytest tests/integration -q -s   # ~3 min, real network

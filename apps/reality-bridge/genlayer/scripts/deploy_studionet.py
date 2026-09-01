@@ -92,6 +92,18 @@ DEFAULT_BLOCK_MARGIN = 1
 FIXTURE_HOST = "test-server.genlayer.com"
 FIXTURE_LABEL = "GenLayer public test fixture server"
 
+# A demo-paced schedule: publish to resolvable in about five and a half
+# minutes, which is short enough to play in one sitting. Every value clears the
+# contract's minimums (60s commit window, 30s reveal grace) and leaves the
+# panel window wider than the commit window so a forfeit hands the panel on
+# rather than voiding it.
+QUICK_SCHEDULE = {
+    "join_window": 180,
+    "commit_window": 60,
+    "panel_window": 120,
+    "reveal_grace": 30,
+}
+
 # Real-time schedule for the published round, in seconds from deployment.
 JOIN_WINDOW = 1800  # 30 minutes to take a seat
 COMMIT_WINDOW = 1800  # 30 minutes per runner attempt
@@ -205,6 +217,15 @@ def main() -> int:
         type=int,
         default=REVEAL_GRACE,
         help=f"Seconds to open a sealed choice (default: {REVEAL_GRACE}).",
+    )
+    parser.add_argument(
+        "--quick",
+        action="store_true",
+        help=(
+            "Demo-paced schedule: joins close in 3 minutes and the panel is "
+            "resolvable about 5.5 minutes after publishing. Individual window "
+            "flags still override it."
+        ),
     )
     parser.add_argument(
         "--block-margin",
@@ -332,16 +353,39 @@ def main() -> int:
     manifest.setdefault("frontendUrl", None)
 
     if not options.skip_round:
-        commit_window = options.commit_window
-        reveal_grace = options.reveal_grace
-        panel_window = options.panel_window or commit_window
+        # --quick supplies defaults; anything passed explicitly still wins.
+        given = set(sys.argv[1:])
+        def chose(flag: str) -> bool:
+            return any(arg == flag or arg.startswith(flag + "=") for arg in given)
+
+        quick = QUICK_SCHEDULE if options.quick else {}
+        join_window = (
+            quick["join_window"]
+            if quick and not chose("--join-window")
+            else options.join_window
+        )
+        commit_window = (
+            quick["commit_window"]
+            if quick and not chose("--commit-window")
+            else options.commit_window
+        )
+        reveal_grace = (
+            quick["reveal_grace"]
+            if quick and not chose("--reveal-grace")
+            else options.reveal_grace
+        )
+        panel_window = (
+            quick["panel_window"]
+            if quick and not chose("--panel-window")
+            else (options.panel_window or options.commit_window)
+        )
         if panel_window < commit_window:
             raise SystemExit(
                 "--panel-window must be at least the commit window, or the "
                 "first runner cannot receive a full attempt."
             )
         now = int(time.time())
-        join_deadline = now + options.join_window
+        join_deadline = now + join_window
         choice_deadline = join_deadline + panel_window
         resolution_time = choice_deadline + reveal_grace
         terminal_deadline = now + TERMINAL_HORIZON

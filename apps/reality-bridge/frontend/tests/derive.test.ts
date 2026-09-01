@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { actionById, deriveState, filterRounds, sortRounds } from "@/lib/derive";
+import {
+  actionById,
+  deriveState,
+  filterRounds,
+  preferredRound,
+  sortRounds,
+} from "@/lib/derive";
 import {
   ALICE,
   BOB,
@@ -342,5 +348,30 @@ describe("headlines", () => {
     });
     expect(state.currentTile?.tile_index).toBe(1);
     expect(state.headline).toMatch(/crossing is live/i);
+  });
+
+  it("defaults to a joinable or proven round instead of an expired empty one", () => {
+    const expiredEmpty = round({
+      round_id: "1",
+      status: "OPEN",
+      player_count: 0,
+      join_deadline: NOW - 1,
+    });
+    const settledProof = round({ round_id: "2", status: "SETTLED" });
+    const joinable = round({
+      round_id: "3",
+      status: "OPEN",
+      join_deadline: NOW + 600,
+    });
+
+    expect(preferredRound([expiredEmpty, settledProof], "", NOW)?.round_id).toBe(
+      "2",
+    );
+    expect(
+      preferredRound([expiredEmpty, settledProof, joinable], "", NOW)?.round_id,
+    ).toBe("3");
+    expect(
+      preferredRound([expiredEmpty, settledProof, joinable], "2", NOW)?.round_id,
+    ).toBe("2");
   });
 });

@@ -1,10 +1,11 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import type { PlayerView, RoundStatus } from "@/lib/contract";
 import RoundLobby from "@/components/RoundLobby";
-import { PlayerRail } from "@/components/RoundBoard";
-import { ALICE, BOB, NOW, player, round } from "./fixtures";
+import { BridgeBoard, PlayerRail } from "@/components/RoundBoard";
+import { ALICE, BOB, NOW, player, round, tile } from "./fixtures";
 
 /**
  * A finished round must not read as though it were still running, and a
@@ -38,6 +39,13 @@ describe("lobby deadline labels", () => {
     expect(screen.getByText(/join window closed/i)).toBeTruthy();
     expect(screen.queryByText(/joins close in/i)).toBeNull();
     expect(screen.queryByText(/elapsed/i)).toBeNull();
+  });
+
+  it("marks a lapsed empty round as history instead of offering a dead action", () => {
+    lobby([
+      round({ status: "OPEN", join_deadline: NOW - 1, player_count: 0 }),
+    ]);
+    expect(screen.getByText(/no seats.*historical round/i)).toBeTruthy();
   });
 
   it("says a lapsed ACTIVE round is expirable instead of counting down", () => {
@@ -102,5 +110,46 @@ describe("seat labels", () => {
     rail("OPEN", [player(0, ALICE), player(1, BOB)]);
     expect(screen.getAllByText("SEATED")).toHaveLength(2);
     expect(screen.queryByText("CROSSING")).toBeNull();
+  });
+
+  it("labels a finished round by its survivors, not an active crossing", () => {
+    rail("SETTLED", [
+      player(0, ALICE, { claim_amount: "1000", claimed: true }),
+      player(1, BOB, { claim_amount: "500", claimed: true }),
+    ]);
+    expect(screen.getByText("2 survivors")).toBeTruthy();
+    expect(screen.queryByText(/still crossing/i)).toBeNull();
+  });
+});
+
+describe("historical and settled presentation", () => {
+  it("keeps historical crossings collapsed until requested", async () => {
+    const user = userEvent.setup();
+    lobby([
+      round({ round_id: "1", status: "SETTLED" }),
+      round({
+        round_id: "2",
+        status: "OPEN",
+        player_count: 0,
+        join_deadline: NOW - 1,
+      }),
+    ]);
+    expect(screen.getByText(/show 1 past crossing/i)).toBeTruthy();
+    expect(screen.queryByText(/no seats.*historical round/i)).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: /show 1 past crossing/i }));
+    expect(screen.getByText(/no seats.*historical round/i)).toBeTruthy();
+  });
+
+  it("does not describe a fully resolved board as having a current panel", () => {
+    render(
+      <BridgeBoard
+        round={round({ status: "SETTLED", tile_count: 1 })}
+        tiles={[tile(0, { status: "RESOLVED", outcome: "YES" })]}
+      />,
+    );
+    expect(screen.queryByText("Current panel")).toBeNull();
+    expect(screen.queryByText("Evidence not yet due")).toBeNull();
+    expect(screen.getByText(/settled by validator consensus/i)).toBeTruthy();
   });
 });

@@ -337,6 +337,7 @@ a {
 .hero-actions {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 24px;
   margin-top: 32px;
 }
@@ -559,6 +560,10 @@ a {
   position: relative;
 }
 
+.bridge-card-single {
+  min-height: 390px;
+}
+
 .panel-topline {
   color: var(--muted);
   font-size: 10px;
@@ -647,6 +652,24 @@ a {
   min-height: 230px;
   padding: 0 10px;
   position: relative;
+}
+
+.bridge-board-single {
+  grid-template-columns: minmax(108px, 128px);
+  margin-bottom: 26px;
+  margin-top: 34px;
+  max-width: 240px;
+  min-height: 165px;
+}
+
+.bridge-board-single .bridge-rail {
+  left: 0;
+  right: 0;
+}
+
+.bridge-board-single .bridge-cable {
+  left: 10%;
+  right: 10%;
 }
 
 .bridge-rail {

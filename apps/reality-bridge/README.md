@@ -1,113 +1,166 @@
 # Reality Bridge
 
-**A real-world prediction and elimination game settled by GenLayer validator
-consensus on StudioNet.**
+**A consensus-mediated commitment game for real-world claims, built as a native GenLayer intelligent-contract application on StudioNet.**
 
-Reality Bridge is a standalone GenLayer application inspired by the risk curve
-of a glass-bridge challenge. Its bridge is not a secret bitmap. Each unopened
-panel is a binary claim about a real-world event. The active runner commits to
-`YES` or `NO` before the evidence exists; GenLayer validators later read the
-registered public sources and settle the panel through consensus.
+Reality Bridge turns a glass-bridge elimination mechanic into a protocol about information arriving over time. A bridge panel is not a hidden random value: it is a pre-registered binary claim about the outside world. The active runner must commit a sealed `YES` or `NO` position before the panel's evidence time. Afterward, independent GenLayer validators evaluate the registered public sources under the on-chain evidence policy and record a consensus outcome.
 
-Network: **GenLayer StudioNet only** — chain id `61999`, RPC
-`https://studio.genlayer.com/api`. Every asset here is a test asset with no
-real-world value.
+The application is intentionally small enough to inspect, but it is not a frontend wrapper around a centralized oracle. The contract owns the round, the participant order, commitment validity, validator-resolution request, settlement, payout accounting and every recovery path. The web client is a strictly non-authoritative interpreter of final contract state.
 
-## Why GenLayer is essential
+## Submission surface
 
-The consensus-critical decision is whether public evidence satisfies a panel's
-human-readable `YES` condition. That needs web access, language interpretation,
-source comparison and an explicit ambiguity policy — and it must be decided the
-same way by independent validators, not by a server. A backend could index and
-preview state, but it cannot choose an outcome or move the pool.
+| Item | Verified value |
+| --- | --- |
+| Network | **GenLayer StudioNet only** — chain id `61999` |
+| Contract | `0x4DE4c2aFC908fd744b65Fe8361FEE4Dc1C5c8CA9` |
+| Hosted client | [reality-bridge-beta.vercel.app](https://reality-bridge-beta.vercel.app) |
+| Published proof round | Round `4`: two wallets, one future-resolving panel, complete settlement and claims |
+| Consensus result | `YES` / `FINAL_EVIDENCE`, receipt `77839f48ea5854f466c6ff6ffbfa5de5a6b176bad3503173158316da44c23f4c` |
+| Pinned GenVM runner | `py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6` |
 
-## How a round runs
+The complete transaction trail, exact deadlines, payout proof and the one outstanding demo-recording item are recorded in [`SUBMISSION.md`](SUBMISSION.md). This repository targets StudioNet exclusively; all currency and assets are test assets with no real-world value.
 
-1. The publisher registers evidence hosts, authors an ordered bridge of one to
-   three binary panels, and opens it. Everything freezes at that moment.
-2. Two to eight players join with the exact entry. Join order is crossing order.
-3. Anyone may start the round once the join window closes.
-4. The active runner commits a salted hash of `YES` or `NO`, then reveals it.
-5. After the panel's evidence timestamp, anyone may ask validators to resolve
-   it: `YES`, `NO`, `VOID`, or a retryable `UNRESOLVED`.
-6. A correct runner earns a discovery credit; a wrong runner is eliminated and
-   the next seat inherits the opened panels. `VOID` eliminates nobody.
-7. Survivors split the whole pool by weight `1 + 3 × discovery_credits`.
-   Cancellation, under-subscription, no-survivor and terminal expiry all unwind
-   into individually claimable refunds of exactly one entry each.
+## Why this needs GenLayer
 
-Full rules, economics and the state machine:
-[`specs/PRODUCT_SPEC.md`](specs/PRODUCT_SPEC.md).
+The difficult decision is semantic rather than arithmetic: whether a public source, at a specified time, satisfies a human-readable `YES` condition. That requires web retrieval, natural-language interpretation, source comparison and a defined ambiguity policy. A conventional backend can render an index, but it cannot be trusted to decide the game outcome or distribute the pool.
 
-## Layout
+Reality Bridge places that boundary inside the intelligent contract:
+
+```text
+player commitment ──> on-chain sealed state
+                             │
+evidence timestamp ──> validator web reasoning ──> consensus receipt
+                             │
+                       immutable panel outcome
+                             │
+                    weighted claims or refunds
+```
+
+The publisher is permitted to author a round, but cannot rewrite it after publication, select an outcome, bypass deadlines or redirect the pool. Anyone may activate a lapsed round, resolve due evidence, move past a missed runner, expire an overdue round, or claim/refund an eligible seat. That removes the need for a privileged keeper and makes recovery behavior part of the protocol, not an operational promise.
+
+## Protocol model
+
+### Immutable evidence envelope
+
+Before opening a round, the publisher registers the allowed evidence hosts and an ordered bridge of one to three panels. A panel commits to:
+
+- its question and precise `YES` condition;
+- a primary source plus optional corroborating sources;
+- a choice deadline and later evidence-resolution time; and
+- a position in the bridge, which fixes play order.
+
+Opening a round freezes its rules and evidence envelope. Resolution can produce `YES`, `NO`, `VOID`, or a retryable `UNRESOLVED`; it does not accept an arbitrary publisher-provided answer. Every resolved panel retains a compact receipt derived from the evidence host, outcome, event identifier and effective date. The receipt demonstrates validator agreement about the registered source interpretation, not an assertion that the public internet is infallible.
+
+### Commit, reveal and liveness
+
+The runner first submits a salted commitment hash, then reveals the choice and salt during the reveal grace period. This separates private intent from public evidence and prevents a runner from waiting for an outcome before choosing a side. The client will not enable the commit until the participant exports and acknowledges a versioned recovery bundle; losing browser storage must not turn a valid commitment into an unrecoverable action.
+
+Liveness is explicit. A missed commit or reveal can be forfeited permissionlessly after its per-attempt deadline. The next seat inherits the opened bridge when time remains; once the information window is gone, the panel voids rather than pretending it can still be fairly answered. Terminal expiry and every no-settlement condition route to individual refunds.
+
+### Conservation and incentives
+
+Each seat supplies the exact entry amount. Correct answers add a discovery credit, while an incorrect answer eliminates the runner; a `VOID` eliminates nobody. At settlement, every surviving seat is assigned:
+
+```text
+weight = 1 + 3 × discovery_credits
+claim  = pool × seat_weight / total_survivor_weight
+```
+
+The final survivor receives rounding dust, so the total of all claims equals the round pool exactly. Cancellation, under-subscription, no survivors and terminal expiry do not strand value: each eligible seat can independently withdraw one entry as a refund. Claims and refunds are idempotent.
+
+## State machine and invariants
+
+```text
+DRAFT ──open──> OPEN ──start──> ACTIVE ──all panels settled──> SETTLED
+                    │                │
+                    │                └──terminal / no survivors──> REFUNDABLE
+                    └──cancel / insufficient seats──────────────> REFUNDABLE
+```
+
+The contract and client are designed around the same non-negotiable properties:
+
+1. A panel cannot be resolved before its evidence time or past its terminal boundary.
+2. A player can reveal only the same salted choice they committed.
+3. Join order is immutable and determines the runner order.
+4. The published evidence envelope cannot be altered after opening.
+5. A terminal round exposes only its relevant claim or refund path.
+6. Every successful payout is bounded by the pool and total payouts conserve it exactly.
+7. The client never treats RPC acceptance as execution success.
+
+## Client correctness model
+
+The Next.js client is deliberately defensive around an eventually settled network:
+
+- **Final reads only.** Authoritative contract reads use `TransactionHashVariant.LATEST_FINAL`, not a provisional SDK default.
+- **Receipt-aware transaction monitoring.** A submitted hash means *submitted*. The UI watches it through decision and requires `execution_result === "SUCCESS"`; an accepted transaction that reverts is surfaced as failure rather than painted as success.
+- **Selected-round consistency.** A background reconciliation for an old transaction cannot render its payload beneath another selected lobby row.
+- **Status-aware interfaces.** Finished rounds read as settled or unwound, never as a live crossing with a current panel. Inert historical rounds stay collapsed until requested.
+- **Purposeful practice mode.** The offline simulator has a scripted clock and fixed outcomes, is entered only through an explicit action, and is never a fallback for a StudioNet failure.
+- **Network gate.** Every write is gated on a connected wallet being on StudioNet, with an actionable explanation for unavailable operations.
+
+These choices make the client easier to trust during a demo: it represents protocol state rather than inventing a smoother but inaccurate local story.
+
+## Verified two-wallet result
+
+Round 4 asked a genuinely future-resolving question: whether the Bitcoin block height from the registered public source would exceed a threshold at the later evidence timestamp. At commit time, the answer did not yet exist.
+
+| Account | Protocol role | Final result |
+| --- | --- | --- |
+| `0x1eE3…6199` | first runner | joined, committed/revealed `YES`, claimed `0.016 GEN` with one discovery credit |
+| `0x9A8C…BaF0` | passive survivor | joined, permissionlessly started/resolved, claimed `0.004 GEN` |
+
+The round settled `YES` by `FINAL_EVIDENCE`; its `0.020 GEN` pool was fully claimed. The complete ordered transaction hashes, final readback and conservation check are in [`SUBMISSION.md`](SUBMISSION.md) and [`deployment/studionet.json`](deployment/studionet.json).
+
+## Repository map
 
 ```text
 reality-bridge/
-├── DEPLOYMENT.md          # StudioNet deployment and browser verification
-├── TESTING.md             # every test layer and how to run it
-├── QA.md                  # hands-on manual testing guide
-├── SECURITY.md            # threat model and mitigations
-├── KNOWN_LIMITATIONS.md   # what this does not do
-├── SUBMISSION.md          # submission checklist and artifacts
-├── HANDOFF.md             # what is left to finish, for whoever picks this up
-├── DEMO.md                # the uncut StudioNet demo script
-├── deployment/
-│   └── studionet.json     # network, address, runner, transactions, round
+├── frontend/                      # Next.js App Router client, StudioNet-only
+│   ├── src/lib/contract.ts         # ABI adapter, final reads, write monitoring
+│   ├── src/lib/derive.ts           # pure lifecycle/action availability model
+│   ├── src/lib/recovery.ts         # versioned commitment recovery bundles
+│   └── src/components/             # lobby, bridge, evidence, actions, monitor
+├── genlayer/
+│   ├── contracts/reality_bridge.py # pinned-runner intelligent contract
+│   ├── tests/direct/               # deterministic protocol behavior
+│   └── tests/integration/          # hosted consensus and two-wallet journey
 ├── specs/
-│   ├── PRODUCT_SPEC.md
-│   ├── ARCHITECTURE.md
-│   └── BUILD_PLAN.md
-├── frontend/              # standalone Next.js App Router client (StudioNet only)
-└── genlayer/
-    ├── contracts/         # pinned-runner intelligent contract
-    ├── scripts/           # deployment and lint tooling
-    └── tests/
-        ├── direct/        # deterministic contract behaviour
-        └── integration/   # hosted StudioNet consensus journey
+│   ├── PRODUCT_SPEC.md             # rules, economics and failure handling
+│   └── ARCHITECTURE.md             # trust boundary and system invariants
+├── deployment/studionet.json       # contract, runner and verification manifest
+├── SECURITY.md                     # threat model and mitigations
+├── QA.md                           # hands-on StudioNet verification procedure
+└── DEMO.md                         # uncut walkthrough script
 ```
 
-## Quick start
+## Verification
+
+The project layers static contract validation, deterministic direct tests, frontend unit/component tests, production builds, dependency audit, automated StudioNet integration and an actual hosted two-wallet journey. Run the local checks from this directory:
 
 ```bash
 python -m pip install -r genlayer/requirements.txt
-```
-
-```bash
+GENVMROOT=.genvmroot genvm-lint check genlayer/contracts/reality_bridge.py
 python -m pytest genlayer/tests/direct -q
+npm --prefix frontend install
+npm --prefix frontend run typecheck
+npm --prefix frontend run lint
+npm --prefix frontend run test
+npm --prefix frontend run build
 ```
 
-```bash
-npm --prefix frontend install && npm --prefix frontend run test
-```
+For the consensus integration procedure and the manual wallet journey, use [`QA.md`](QA.md). The contract runner hash is intentionally pinned; do not replace it while preparing a submission.
 
-To deploy and play against the live network, follow
-[`DEPLOYMENT.md`](DEPLOYMENT.md).
+## Reviewer reading order
 
-## Design commitments
+1. [`SUBMISSION.md`](SUBMISSION.md) for live artifacts and honest completion status.
+2. [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md) for the consensus boundary.
+3. [`specs/PRODUCT_SPEC.md`](specs/PRODUCT_SPEC.md) for economics and lifecycle rules.
+4. [`SECURITY.md`](SECURITY.md) for the threat model.
+5. [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md) for explicit non-goals and remaining limits.
+6. [`QA.md`](QA.md) and [`DEMO.md`](DEMO.md) for hands-on verification.
 
-- **StudioNet is the only network.** The chain id, RPC, explorer and currency
-  all come from one module, `frontend/src/lib/network.ts`.
-- **Nothing is called confirmed until the chain says so.** A returned hash means
-  submitted. The interface follows every transaction to a decided consensus
-  state and inspects the leader receipt, because GenLayer can accept a
-  transaction whose contract execution reverted.
-- **Authoritative reads are explicitly final** (`TransactionHashVariant
-  .LATEST_FINAL`), never the SDK's non-final default.
-- **No privileged keeper.** Activation, both forfeit paths, resolution, expiry,
-  claims and refunds are permissionless and every one has a button.
-- **Simulation is never mistaken for live play.** It is a separate mode, entered
-  only on purpose, with its own visual language, and it never uses the words
-  "on-chain", "live" or "validators agreed". A StudioNet failure surfaces an
-  error instead of silently becoming a simulation.
-- **The salt is the player's to keep.** The interface will not sign a commitment
-  until the player has exported a versioned recovery bundle and said so.
-- **Testnet only.** No mainnet path, no real-value play, no audit.
+## Contribution constraints
 
-## Working rules for contributors
-
-- Write only inside `apps/reality-bridge`.
-- Never reuse another application's names, contracts or deployment addresses.
-- Keep a concrete GenVM runner hash pinned in the contract header.
-- Run `genvm-lint check` before the direct or integration suites.
-- Read the bundled Next.js docs under `node_modules/next/dist/docs/` before
-  changing framework code; this Next.js version has breaking changes.
+- Keep all deployment, documentation and user-facing network language on **StudioNet** only.
+- Do not commit `.env.local` or `.deployer.key`.
+- Do not change the concrete GenVM runner hash without a deliberate contract migration and a fresh verification run.
+- Read the bundled Next.js documentation under `frontend/node_modules/next/dist/docs/` before changing framework code.

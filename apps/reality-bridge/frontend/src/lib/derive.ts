@@ -433,6 +433,39 @@ export function sortRounds(rounds: RoundView[]): RoundView[] {
   });
 }
 
+/**
+ * Pick the round that makes the most sense as the first live view.
+ *
+ * A configured id is an explicit operator choice. Without one, prioritise a
+ * running crossing, then a round a visitor can still join. A settled round is
+ * a stronger default than an empty or stranded historical round because it
+ * proves the complete protocol and does not invite an impossible action.
+ */
+export function preferredRound(
+  rounds: RoundView[],
+  pinnedRoundId: string,
+  nowSeconds: number,
+): RoundView | null {
+  if (pinnedRoundId) {
+    const pinned = rounds.find((round) => round.round_id === pinnedRoundId);
+    if (pinned) return pinned;
+  }
+
+  const sorted = sortRounds(rounds);
+  return (
+    sorted.find((round) => round.status === "ACTIVE") ??
+    sorted.find(
+      (round) => round.status === "OPEN" && nowSeconds < round.join_deadline,
+    ) ??
+    sorted.find((round) => round.status === "DRAFT") ??
+    sorted.find((round) => round.status === "SETTLED") ??
+    sorted.find((round) => round.status === "OPEN") ??
+    sorted.find((round) => round.status === "REFUNDABLE") ??
+    sorted[0] ??
+    null
+  );
+}
+
 export function actionById(
   state: DerivedState,
   id: ActionId,

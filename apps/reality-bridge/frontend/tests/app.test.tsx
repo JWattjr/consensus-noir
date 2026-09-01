@@ -68,6 +68,15 @@ function liveRound() {
   };
 }
 
+function rpcResponse(result: unknown) {
+  return {
+    ok: true,
+    status: 200,
+    headers: new Headers(),
+    json: async () => ({ result }),
+  } as unknown as Response;
+}
+
 async function renderApp() {
   const { default: RealityBridgeApp } = await import(
     "@/components/RealityBridgeApp"
@@ -138,6 +147,38 @@ describe("live StudioNet surface", () => {
     await waitFor(() => expect(screen.getByText("LIVE STUDIONET")).toBeTruthy());
     expect(screen.getByRole("heading", { name: /published crossings/i })).toBeTruthy();
     expect(screen.queryByText("SIMULATION")).toBeNull();
+  });
+
+  it("offers a StudioNet test top-up to a connected wallet that cannot pay the entry", async () => {
+    installWallet({ account: ALICE });
+    const user = userEvent.setup();
+    let funded = false;
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as { method: string };
+      if (body.method === "sim_fundAccount") {
+        funded = true;
+        return rpcResponse(null);
+      }
+      return rpcResponse(funded ? "0x4563918244f40000" : "0x0");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await renderApp();
+
+    const topUp = await screen.findByRole("button", { name: /get test gen/i });
+    expect(screen.getByText(/will not cover the/i)).toBeTruthy();
+    await user.click(topUp);
+
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(([, init]) => {
+          const body = JSON.parse(String((init as RequestInit | undefined)?.body));
+          return body.method === "sim_fundAccount";
+        }),
+      ).toBe(true),
+    );
+    expect(await screen.findByText(/topped up with test gen/i)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /get test gen/i })).toBeNull();
   });
 
   it("blocks writes and explains why when the wallet is on another chain", async () => {

@@ -16,3 +16,6 @@ genlayer/.deployer.key
 .env
 .env.local
 .env.*.local
+
+# Wallet recovery bundles contain reveal salts and must stay local.
+.recovery/

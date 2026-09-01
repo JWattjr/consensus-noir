@@ -58,11 +58,13 @@ import {
   actionById,
   deriveState,
   filterRounds,
+  preferredRound,
   type ActionId,
   type LobbyFilter,
 } from "@/lib/derive";
 import { formatAmount, sameAddress, shortAddress } from "@/lib/format";
 import {
+  NATIVE_SYMBOL,
   NETWORK_CHAIN_ID,
   NETWORK_LABEL,
   explorerAddressUrl,
@@ -71,6 +73,12 @@ import {
   switchToStudioNet,
   parseChainId,
 } from "@/lib/network";
+import {
+  DEFAULT_TOP_UP_WEI,
+  needsTopUp,
+  readBalance,
+  requestTestFunds,
+} from "@/lib/faucet";
 import { buildBundle, type RecoveryBundle } from "@/lib/recovery";
 import {
   clearPending,
@@ -125,6 +133,8 @@ export default function RealityBridgeApp() {
   const [account, setAccount] = useState("");
   const [chainId, setChainId] = useState<number | null>(null);
   const [walletBusy, setWalletBusy] = useState(false);
+  const [balance, setBalance] = useState<bigint | null>(null);
+  const [faucetBusy, setFaucetBusy] = useState(false);
   const hasProvider = useHasInjectedProvider();
 
   // -- live chain state -----------------------------------------------------
@@ -235,6 +245,42 @@ export default function RealityBridgeApp() {
     }
   }, []);
 
+  const refreshBalance = useCallback(async (address: string) => {
+    if (!address) {
+      setBalance(null);
+      return;
+    }
+    setBalance(await readBalance(address));
+  }, []);
+
+  useEffect(() => {
+    if (isSimulation || !account || !networkOk) {
+      return;
+    }
+    let cancelled = false;
+    readBalance(account).then((value) => {
+      if (!cancelled) setBalance(value);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [account, isSimulation, networkOk]);
+
+  const topUp = useCallback(async () => {
+    if (!account) return;
+    setFaucetBusy(true);
+    try {
+      const result = await requestTestFunds(account, DEFAULT_TOP_UP_WEI);
+      setBalance(result.balance);
+      setNotice({
+        tone: result.ok ? "success" : "error",
+        message: result.message,
+      });
+    } finally {
+      setFaucetBusy(false);
+    }
+  }, [account]);
+
   const switchNetwork = useCallback(async () => {
     const provider = getInjectedProvider();
     if (!provider) return;
@@ -319,13 +365,14 @@ export default function RealityBridgeApp() {
         if (cancelled) return;
         const rounds = applyLobby(result);
         if (rounds.length === 0) return;
-        const preferred =
-          (PINNED_ROUND_ID &&
-            rounds.find((round) => round.round_id === PINNED_ROUND_ID)) ||
-          rounds.find((round) => round.status === "ACTIVE") ||
-          rounds.find((round) => round.status === "OPEN") ||
-          rounds[0];
-        setSelectedRoundId((current) => current ?? preferred.round_id);
+        const preferred = preferredRound(
+          rounds,
+          PINNED_ROUND_ID,
+          Math.floor(Date.now() / 1000),
+        );
+        if (preferred) {
+          setSelectedRoundId((current) => current ?? preferred.round_id);
+        }
       })
       .catch((error: unknown) => {
         if (!cancelled) applyLobbyError(error);
@@ -394,14 +441,22 @@ export default function RealityBridgeApp() {
   // -------------------------------------------------------------------------
 
   const activeBundleData: RoundBundle | null = useMemo(() => {
-    if (!isSimulation) return bundleState;
+    // A reconciled transaction may request an older round in parallel with the
+    // selected-round read. Never render that stale payload under a different
+    // selected lobby row.
+    if (!isSimulation) {
+      if (!bundleState || bundleState.round.round_id !== selectedRoundId) {
+        return null;
+      }
+      return bundleState;
+    }
     if (!simulation) return null;
     return {
       round: simulation.round,
       tiles: simulation.tiles,
       players: simulation.players,
     };
-  }, [bundleState, isSimulation, simulation]);
+  }, [bundleState, isSimulation, selectedRoundId, simulation]);
 
   const activeConfig = isSimulation ? SIMULATION_CONFIG : config;
 
@@ -694,6 +749,7 @@ export default function RealityBridgeApp() {
         // The watch runs through to finality, and authoritative reads use the
         // finalized variant, so a single re-read here is already current.
         reload(roundId);
+        void refreshBalance(account);
       } else if (settled.phase !== "rejected") {
         setNotice({
           tone: "error",
@@ -708,8 +764,9 @@ export default function RealityBridgeApp() {
       activeBundleData,
       bundleAcknowledged,
       effectiveContract,
-      reload,
       pendingBundle,
+      refreshBalance,
+      reload,
       storedBundle,
     ],
   );
@@ -887,6 +944,13 @@ export default function RealityBridgeApp() {
               <a className="primary-button" href="#main-content">
                 Enter the round <ChevronRight size={17} aria-hidden="true" />
               </a>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => enterSimulation("clean-crossing")}
+              >
+                Try the practice round <FlaskConical size={15} aria-hidden="true" />
+              </button>
               <a className="text-button" href="#protocol">
                 How it works <ArrowUpRight size={15} aria-hidden="true" />
               </a>
@@ -969,6 +1033,37 @@ export default function RealityBridgeApp() {
           </div>
         )}
 
+        {/* StudioNet has no faucet page, only a JSON-RPC method. Without this
+            a new player has to run a curl command before they can join. */}
+        {!isSimulation &&
+          account &&
+          networkOk &&
+          activeBundleData &&
+          needsTopUp(balance, BigInt(activeBundleData.round.entry_amount)) && (
+            <div className="notice notice-info" role="status">
+              <Info size={16} aria-hidden="true" />
+              <span>
+                This wallet holds{" "}
+                <strong>{balance === null ? "—" : formatAmount(balance)}</strong>
+                , which will not cover the{" "}
+                {formatAmount(activeBundleData.round.entry_amount)} entry plus
+                fees. {NETWORK_LABEL} is a simulator, so you can mint test{" "}
+                {NATIVE_SYMBOL} instantly — it has no real-world value.
+              </span>
+              <button
+                className="ghost-button"
+                type="button"
+                onClick={() => void topUp()}
+                disabled={faucetBusy}
+              >
+                {faucetBusy ? (
+                  <LoaderCircle className="spin" size={14} aria-hidden="true" />
+                ) : null}
+                {faucetBusy ? "Requesting…" : `Get test ${NATIVE_SYMBOL}`}
+              </button>
+            </div>
+          )}
+
         <div id="main-content">
           {!isSimulation && !IS_CONFIGURED ? (
             <ConfigurationGate onSimulate={enterSimulation} />
@@ -1010,7 +1105,14 @@ export default function RealityBridgeApp() {
                 <div>
                   <div className="eyebrow">
                     <span className="eyebrow-line" />{" "}
-                    {isSimulation ? "Simulated crossing" : "Live crossing"}
+                    {isSimulation
+                      ? "Simulated crossing"
+                      : activeBundleData?.round.status === "SETTLED"
+                        ? "Settled crossing"
+                        : activeBundleData?.round.status === "REFUNDABLE" ||
+                            activeBundleData?.round.status === "CANCELLED"
+                          ? "Unwound crossing"
+                          : "Live crossing"}
                   </div>
                   <h2>
                     {activeBundleData?.round.title ?? "Reality Bridge"}

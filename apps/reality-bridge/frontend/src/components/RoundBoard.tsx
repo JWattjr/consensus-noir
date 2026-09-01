@@ -47,9 +47,25 @@ export function BridgeBoard({
   const progress = tiles.length
     ? Math.round((resolved / tiles.length) * 100)
     : 0;
+  const tileStates = tiles.map((tile, index) =>
+    tileState(
+      tile,
+      index,
+      round.current_tile_index,
+      round.status === "ACTIVE",
+    ),
+  );
+  const hasActivePanel = tileStates.includes("active");
+  const hasLockedPanel = tileStates.includes("locked");
 
   return (
-    <div className="bridge-card panel">
+    <div
+      className={
+        tiles.length === 1
+          ? "bridge-card bridge-card-single panel"
+          : "bridge-card panel"
+      }
+    >
       <div className="panel-topline">
         <div>
           <span className="panel-kicker">ROUND {round.round_id}</span>
@@ -83,14 +99,13 @@ export function BridgeBoard({
         </div>
       </div>
 
-      <ol className="bridge-board">
+      <ol
+        className={
+          tiles.length === 1 ? "bridge-board bridge-board-single" : "bridge-board"
+        }
+      >
         {tiles.map((tile, index) => {
-          const state = tileState(
-            tile,
-            index,
-            round.current_tile_index,
-            round.status === "ACTIVE",
-          );
+          const state = tileStates[index];
           return (
             <li className={`bridge-tile tile-${state}`} key={tile.tile_index}>
               <div className="tile-cap">
@@ -132,12 +147,16 @@ export function BridgeBoard({
         <span>
           <span className="legend-dot resolved" /> Settled by validator consensus
         </span>
-        <span>
-          <span className="legend-dot active" /> Current panel
-        </span>
-        <span>
-          <span className="legend-dot locked" /> Evidence not yet due
-        </span>
+        {hasActivePanel && (
+          <span>
+            <span className="legend-dot active" /> Current panel
+          </span>
+        )}
+        {hasLockedPanel && (
+          <span>
+            <span className="legend-dot locked" /> Evidence not yet due
+          </span>
+        )}
       </div>
     </div>
   );
@@ -283,6 +302,16 @@ export function PlayerRail({
   account: string;
 }) {
   const alive = players.filter((player) => player.status === "ACTIVE").length;
+  const countLabel =
+    round.status === "SETTLED"
+      ? `${alive} ${alive === 1 ? "survivor" : "survivors"}`
+      : round.status === "REFUNDABLE" || round.status === "CANCELLED"
+        ? players.length === 0
+          ? "No seats"
+          : "Round unwound"
+        : round.status === "OPEN"
+          ? `${players.length} seated`
+          : `${alive} still crossing`;
   return (
     <section className="panel players-card" aria-labelledby="players-heading">
       <div className="panel-heading">
@@ -290,7 +319,7 @@ export function PlayerRail({
           <span className="panel-kicker">CROSSING ORDER</span>
           <h3 id="players-heading">Who is on the bridge</h3>
         </div>
-        <span className="count-badge">{alive} still crossing</span>
+        <span className="count-badge">{countLabel}</span>
       </div>
       {players.length === 0 ? (
         <p className="muted-copy">Nobody has taken a seat yet.</p>

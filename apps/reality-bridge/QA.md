@@ -54,7 +54,14 @@ by hand:
 ### 1.3 Fund your wallet
 
 StudioNet accounts start empty and there is no public faucet page — the
-simulator exposes one over JSON-RPC. Five GEN is plenty:
+simulator exposes one over JSON-RPC.
+
+**From the app:** connect a wallet on StudioNet. If the balance cannot cover
+the entry plus fee headroom, the page offers a **Get test GEN** button that
+calls the simulator's faucet and reads the balance back. The reported balance
+is what the chain returns afterwards, not the amount requested.
+
+**By hand**, if you would rather not use the button — five GEN is plenty:
 
 ```bash
 curl -s -X POST https://studio.genlayer.com/api -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"sim_fundAccount","params":["0xYOUR_ADDRESS",5000000000000000000],"id":1}'
@@ -92,6 +99,25 @@ Rounds carry real deadlines, so published ones expire. Publish your own with
 the publisher key in the git-ignored `genlayer/.deployer.key`.
 
 Take the contract address from the manifest and pick an unused round id.
+
+### Recipe 0 — `--quick` (about five and a half minutes to resolvable)
+
+The shortest round the contract's minimums permit. Joins close three minutes
+after publishing and the panel becomes resolvable at five and a half. Use it
+for a demo or a smoke test where you want the whole lifecycle in one sitting.
+
+```bash
+python genlayer/scripts/deploy_studionet.py --contract 0xYOUR_CONTRACT --round-id 10 --quick
+```
+
+That is `--join-window 180 --commit-window 60 --panel-window 120
+--reveal-grace 30`. Any window flag you pass explicitly still wins, so
+`--quick --join-window 600` gives you longer to gather players without
+lengthening the rest.
+
+It is genuinely tight: **have both wallets funded and connected before you
+publish.** Three minutes is enough to join twice and no more. For a first
+run through the flow, prefer recipe A.
 
 ### Recipe A — fast full cycle (about 12 minutes to settlement)
 
@@ -148,7 +174,7 @@ network read, or any chain id other than `61999` appears anywhere.
 
 ### 3.2 Wrong network
 
-**Do.** Connect a wallet, then switch it to Ethereum mainnet in the wallet.
+**Do.** Connect a wallet, then switch it to an unsupported network in the wallet.
 
 **Expect.** A red banner appears immediately naming the chain you are on.
 Every write disables with *Switch the wallet to GenLayer StudioNet.* A

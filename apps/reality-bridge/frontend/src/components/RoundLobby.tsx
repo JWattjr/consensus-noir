@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronRight, Users } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import type { RoundView } from "@/lib/contract";
 import type { LobbyFilter } from "@/lib/derive";
@@ -29,13 +30,15 @@ const STATUS_TONE: Record<
   CANCELLED: "bad",
 };
 
-function deadlineLabel(round: RoundView, now: number): string {
+export function deadlineLabel(round: RoundView, now: number): string {
   if (round.status === "OPEN") {
     // An OPEN round whose join window has already lapsed is not joinable; it
     // is waiting for someone to start it. "Joins close in elapsed" read as a
     // glitch rather than as a state.
     if (now >= round.join_deadline) {
-      return "Join window closed — anyone can start it";
+      return round.player_count === 0
+        ? "No seats — historical round"
+        : "Join window closed — anyone can start it";
     }
     return `Joins close in ${formatCountdown(round.join_deadline, now)}`;
   }
@@ -45,8 +48,16 @@ function deadlineLabel(round: RoundView, now: number): string {
     }
     return `Terminal deadline in ${formatCountdown(round.terminal_deadline, now)}`;
   }
-  if (round.status === "SETTLED") return "Claims open";
-  if (round.status === "REFUNDABLE") return "Refunds open";
+  if (round.status === "SETTLED") {
+    return round.player_count === 0
+      ? "Historical round — no payouts"
+      : "Payouts finalized";
+  }
+  if (round.status === "REFUNDABLE") {
+    return round.player_count === 0
+      ? "Historical round — no refunds"
+      : "Refunds available";
+  }
   if (round.status === "CANCELLED") return "Cancelled before start";
   return "Not open yet";
 }
@@ -70,6 +81,65 @@ export default function RoundLobby({
   actionableRoundIds: ReadonlySet<string>;
   now: number;
 }) {
+  const [showHistory, setShowHistory] = useState(false);
+  const { featuredRounds, historicalRounds } = useMemo(() => {
+    if (filter !== "all") {
+      return { featuredRounds: rounds, historicalRounds: [] as RoundView[] };
+    }
+
+    const featuredIds = new Set<string>();
+    if (
+      selectedRoundId &&
+      rounds.some((round) => round.round_id === selectedRoundId)
+    ) {
+      featuredIds.add(selectedRoundId);
+    }
+    for (const round of rounds) {
+      if (
+        round.status === "ACTIVE" ||
+        round.status === "DRAFT" ||
+        // A lapsed OPEN round that holds seats is not history: the join
+        // window has closed but anyone can still start it. Filing it under
+        // past crossings hides a live, permissionless action.
+        (round.status === "OPEN" &&
+          (now < round.join_deadline || round.player_count > 0)) ||
+        // Never collapse a round this wallet is committed to or can act on.
+        // Those carry a seat or an unclaimed payout, and a collapsed toggle
+        // is the wrong place to discover either.
+        joinedRoundIds.has(round.round_id) ||
+        actionableRoundIds.has(round.round_id)
+      ) {
+        featuredIds.add(round.round_id);
+      }
+    }
+
+    let featured = rounds.filter((round) => featuredIds.has(round.round_id));
+    if (featured.length === 0) {
+      const proofRound = rounds.find((round) => round.status === "SETTLED");
+      if (proofRound) featured = [proofRound];
+    }
+    // With nothing to feature, show what there is rather than an empty lobby
+    // whose only control is "show past crossings".
+    if (featured.length === 0) featured = rounds;
+    const ids = new Set(featured.map((round) => round.round_id));
+    return {
+      featuredRounds: featured,
+      historicalRounds: rounds.filter((round) => !ids.has(round.round_id)),
+    };
+  }, [
+    actionableRoundIds,
+    filter,
+    joinedRoundIds,
+    now,
+    rounds,
+    selectedRoundId,
+  ]);
+  const displayedRounds = showHistory ? rounds : featuredRounds;
+  const countLabel =
+    filter === "all" && historicalRounds.length > 0 && !showHistory
+      ? `${featuredRounds.length} current · ${historicalRounds.length} past`
+      : `${displayedRounds.length} shown`;
+
   return (
     <section className="panel lobby-panel" aria-labelledby="lobby-heading">
       <div className="panel-heading">
@@ -77,7 +147,7 @@ export default function RoundLobby({
           <span className="panel-kicker">ROUND LOBBY</span>
           <h3 id="lobby-heading">Published crossings</h3>
         </div>
-        <span className="count-badge">{rounds.length} shown</span>
+        <span className="count-badge">{countLabel}</span>
       </div>
 
       <div className="lobby-filters" role="group" aria-label="Filter rounds">
@@ -101,7 +171,7 @@ export default function RoundLobby({
         />
       ) : (
         <ul className="lobby-list">
-          {rounds.map((round) => {
+          {displayedRounds.map((round) => {
             const selected = round.round_id === selectedRoundId;
             return (
               <li key={round.round_id}>
@@ -140,6 +210,18 @@ export default function RoundLobby({
             );
           })}
         </ul>
+      )}
+      {filter === "all" && historicalRounds.length > 0 && (
+        <button
+          className="history-toggle"
+          type="button"
+          aria-expanded={showHistory}
+          onClick={() => setShowHistory((visible) => !visible)}
+        >
+          {showHistory
+            ? "Hide past crossings"
+            : `Show ${historicalRounds.length} past ${historicalRounds.length === 1 ? "crossing" : "crossings"}`}
+        </button>
       )}
     </section>
   );

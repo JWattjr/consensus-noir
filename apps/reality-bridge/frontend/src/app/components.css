@@ -329,6 +329,23 @@
   padding: 0;
 }
 
+.history-toggle {
+  background: transparent;
+  border: 0;
+  color: var(--teal-dark);
+  font-size: 11px;
+  font-weight: 800;
+  margin-top: 13px;
+  min-height: 38px;
+  padding: 6px 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.history-toggle:hover {
+  color: var(--ink);
+}
+
 .lobby-row {
   align-items: center;
   background: var(--white);
