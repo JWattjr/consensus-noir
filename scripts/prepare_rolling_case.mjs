@@ -96,8 +96,11 @@ async function main() {
   console.log(`  reveal closes    ${clock(record.revealDeadline)}`);
   console.log(`  verdict from     ${clock(record.resolutionEligibilityTime)}`);
   console.log(`\n  A visitor can complete the full loop in about 30 minutes from now.`);
-  console.log(`\n  IMPORTANT: the two seeded players must reveal before ${clock(record.revealDeadline)}`);
-  console.log(`  or they forfeit. Run: node scripts/reveal_seeded.mjs ${caseId} ${name}\n`);
+  console.log(`\n  Then, in order:`);
+  console.log(`    node scripts/reveal_seeded.mjs ${caseId} ${name}`);
+  console.log(`    node scripts/finish_rolling_case.mjs ${caseId}`);
+  console.log(`\n  The second one matters. A rolling case nobody finishes stalls with`);
+  console.log(`  escrow locked, and past its refund deadline it can never reach a verdict.\n`);
   console.log("CONSENSUS_NOIR_ROLLING_RESULT=" + JSON.stringify(record));
 }
 
