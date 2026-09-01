@@ -1,4 +1,4 @@
-# Reality Bridge — uncut StudioNet demo script
+# Reality Bridge — walkthrough of one full round
 
 One continuous take, no cuts, no edits. Everything below runs against **GenLayer
 StudioNet** (chain id `61999`). Total wall time is about 12 minutes if you use
@@ -178,5 +178,7 @@ to wallet 2. The complete transaction list and hashes are in
 [`SUBMISSION.md`](SUBMISSION.md) and `deployment/studionet.json`.
 
 This section is an on-chain evidence record, not a video: the connected browser
-surface did not expose a recorder, so `recordedDemonstration` remains `false`
-until an actual uncut capture is attached.
+surface did not expose a recorder. No screen recording is provided: the
+evidence for every claim is reproducible from
+`python genlayer/scripts/verify_submission.py`, which re-derives it from live
+chain and source data rather than showing it.

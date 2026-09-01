@@ -93,6 +93,19 @@ up. Anything longer than that is a bug.
 
 ---
 
+## 1.4 Verify the submission's claims without playing anything
+
+```bash
+python genlayer/scripts/verify_submission.py
+```
+
+Reads the deployed contract from StudioNet, re-fetches each resolved panel's
+evidence from its public source, recomputes every stored receipt from the
+documented pre-image, re-derives each outcome from the evidence's own
+timestamp, and reads the hosted client's JavaScript bundle to confirm which
+contract it actually serves. `PASS`/`FAIL` per check; non-zero exit on any
+failure.
+
 ## 2. Get a round you can actually play
 
 Rounds carry real deadlines, so published ones expire. Publish your own with

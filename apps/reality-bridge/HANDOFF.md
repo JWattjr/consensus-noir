@@ -1,77 +1,70 @@
-# Reality Bridge — handoff
+# Reality Bridge — operator runbook
 
-The build is complete and every offline check passes. The source is committed,
-round 4 is published on StudioNet, the frontend is hosted, and the funded
-two-wallet journey has completed on the public URL. The only item not captured
-by this environment is an uncut screen recording; the on-chain evidence is
-recorded below and in `SUBMISSION.md`.
-
-Read [`SUBMISSION.md`](SUBMISSION.md) for the full picture and
-[`QA.md`](QA.md) for the hands-on procedures. This file is only the remaining
-work.
+Everything needed to run, republish, and re-verify this deployment. For what
+the submission claims and the evidence behind it, read
+[`SUBMISSION.md`](SUBMISSION.md). For the security model, read
+[`SECURITY.md`](SECURITY.md).
 
 ## Current state
 
 | | |
 | --- | --- |
 | Contract (StudioNet, chain `61999`) | `0x9fD62230aA1149bf443C0a447ffe9D1b2cF4b87E` |
+| Deployment transaction | `0x88d553046d34a8bb7aee59b36b047231746d61c98c8a85e42ad9f3c5ef4ae881` |
 | Publisher account | `0xf19AA039E52fC65A23f2f98FBA15081244C32d4d` |
 | Publisher key | `genlayer/.deployer.key` — **git-ignored, local to the machine that deployed** |
-| Published round 1 | expired unjoined; retained as historical manifest data |
-| Published round 2 | expired unjoined; retained as historical manifest data |
-| Published round 3 | historical `OPEN` round with one unclaimed seat; retained for auditability |
-| Published round 4 | `SETTLED`, one panel, two seats, outcome `YES`, both claims paid |
-| Git | source, hosted status, and the round-4 evidence are committed in this repository |
-| `frontendUrl` in the manifest | `https://reality-bridge-beta.vercel.app` |
+| Round 1 | expired unjoined; retained as historical manifest data |
+| Round 2 | `SETTLED` — the anchored-resolution evidence, see `SUBMISSION.md` |
+| Round 3 | published open for a reviewer to play |
 
-Passing now: contract lint + schema (28 methods), 61 direct tests, 104 frontend
-tests, typecheck, lint, production build, `npm audit` clean, the hosted
-StudioNet integration journey (192 s), the public URL smoke check, and the
-signed two-wallet round-4 journey.
+An earlier deployment, `0x4DE4c2aFC908fd744b65Fe8361FEE4Dc1C5c8CA9`, carried
+rounds 1–4 under the **defective tip-height question**. It is retained for
+auditability and is not the submission contract. The redeploy was required
+because the stored panel gained a field and the receipt scheme moved to v2.
 
-## Task 1 — Commit the source (done)
-
-69 files across `apps/reality-bridge/` and `.github/`. Nothing in the tree
-carries AI attribution; keep it that way — **no `Co-Authored-By`, no
-"generated with" trailers, no tool names in commit messages.**
-
-Confirm before committing that no secret is staged:
+## Verify the whole submission in one command
 
 ```bash
-git ls-files | grep -E '\.env(\.local)?$|\.deployer\.key$'
+python genlayer/scripts/verify_submission.py
 ```
 
-That must print nothing. `.gitignore` already covers `.env.local`,
-`.deployer.key`, `.genvmroot/`, `artifacts/` and `__pycache__/`.
+It trusts nothing in this repository's prose. It reads the deployed contract
+from StudioNet, re-fetches each panel's evidence from the public source,
+recomputes every stored receipt from the documented pre-image, and checks that
+each outcome follows from the evidence's own timestamp rather than from when
+resolution happened to run. Exit status is 0 only if every check passes.
 
-CI (`.github/workflows/reality-bridge.yml`) runs on push: contract, frontend,
-and a network-hygiene job that fails on any non-StudioNet GenLayer network or
-a tracked secret.
-
-## Task 2 — Publish a fresh, joinable round (done)
-
-Rounds carry real deadlines and expire. Rounds 1–3 are historical; round 4 is
-the settled public round that carries the payout evidence. Round 5 was
-published to verify the `--quick` schedule and expired unjoined — it is
-historical too. **Round ids 1–5 are used; start at 6.**
-
-**If you are on the machine that holds `genlayer/.deployer.key`:**
+## Offline checks
 
 ```bash
-python genlayer/scripts/deploy_studionet.py --contract 0x9fD62230aA1149bf443C0a447ffe9D1b2cF4b87E --round-id 6 --join-window 1200 --commit-window 300 --panel-window 600 --reveal-grace 120
+python -m pytest genlayer/tests/direct -q                 # 61 passed
+python genlayer/scripts/make_genvmroot.py
+GENVMROOT=.genvmroot genvm-lint check genlayer/contracts/reality_bridge.py
+npm --prefix frontend run typecheck
+npm --prefix frontend run lint
+npm --prefix frontend run test                            # 104 passed
+npm --prefix frontend run build
+npm --prefix frontend audit --audit-level=high            # 0 vulnerabilities
 ```
 
-For a demo you intend to play through in one sitting, `--quick` replaces every
-window flag with a schedule that is resolvable about five and a half minutes
-after publishing:
+The hosted journey sends real transactions and is run by hand:
 
 ```bash
-python genlayer/scripts/deploy_studionet.py --contract 0x9fD62230aA1149bf443C0a447ffe9D1b2cF4b87E --round-id 6 --quick
+cd genlayer && python -m pytest tests/integration -q -s   # ~3 min
 ```
 
-Have both wallets funded and connected first — joins close three minutes in.
+## Publish a fresh round
 
-**If you are not** — the key cannot be recovered, so deploy fresh:
+Rounds carry real deadlines and expire, so a published round eventually stops
+being joinable.
+
+**If you hold `genlayer/.deployer.key`:**
+
+```bash
+python genlayer/scripts/deploy_studionet.py --contract 0x9fD62230aA1149bf443C0a447ffe9D1b2cF4b87E --round-id 4 --join-window 7200 --commit-window 1800 --panel-window 5400 --reveal-grace 900 --block-margin 12
+```
+
+**If you do not** — the key cannot be recovered, so deploy fresh:
 
 ```bash
 python genlayer/scripts/deploy_studionet.py --join-window 1800 --commit-window 1800 --panel-window 3600 --reveal-grace 900
@@ -79,110 +72,58 @@ python genlayer/scripts/deploy_studionet.py --join-window 1800 --commit-window 1
 
 That writes a new key to `genlayer/.deployer.key`. **Keep it**: it is the only
 way to author further rounds on that deployment. The manifest merges rather
-than overwrites, so an existing deployment record survives.
+than overwrites, so existing records survive.
 
-The published question asks whether a specific future block was mined at or
-before the panel's evidence instant. The target height is the live tip at
-publish time plus `--block-margin` (default `+1`), so the answer genuinely
-does not exist when players commit, and a mined block's header timestamp never
-changes, so the answer is the same whenever anyone resolves it.
+`--quick` publishes a demo-paced round (joins close in 3 minutes, resolvable
+at about 5.5). Any window flag you pass explicitly still wins.
 
-Two shapes of question are defects, and both have been published here before:
+### Choosing `--block-margin`
 
-- A static fixture page, readable before committing.
-- Anything read from a **live, moving** endpoint such as
-  `/api/blocks/tip/height`. Tip height only rises, so a "greater than N"
-  panel answers NO early and YES late, and resolution is permissionless —
-  the caller would be choosing the payout. Bind the question to a datum that
-  is fixed once it exists.
+The panel asks whether block `tip + margin` was mined at or before the panel's
+instant. Bitcoin averages a block every ten minutes, so a margin near
+`minutes_until_resolution / 10` makes the question genuinely uncertain. A much
+smaller margin trends to a certain `YES`; a much larger one to a certain `NO`.
 
 `--panel-window` larger than `--commit-window` leaves slack so a forfeited
 runner hands the **same** panel to the next seat. Without it every forfeit
 produces `VOID_LIVENESS`.
 
-## Task 3 — Host the frontend (done)
+## Host the frontend
 
 ```bash
-cp frontend/.env.example frontend/.env.local     # set the two NEXT_PUBLIC_ vars
+cp frontend/.env.example frontend/.env.local
 npm --prefix frontend run build
 ```
 
-The production URL is [`https://reality-bridge-beta.vercel.app`](https://reality-bridge-beta.vercel.app).
-It is a static-capable Next.js deployment of the single client page. The host
-has:
+The host needs:
 
 ```text
-NEXT_PUBLIC_REALITY_BRIDGE_CONTRACT=0x...
-NEXT_PUBLIC_REALITY_BRIDGE_ROUND_ID=          # optional; blank picks the most urgent
+NEXT_PUBLIC_REALITY_BRIDGE_CONTRACT=0x9fD62230aA1149bf443C0a447ffe9D1b2cF4b87E
+NEXT_PUBLIC_REALITY_BRIDGE_ROUND_ID=          # blank picks the joinable round
 ```
 
-The URL is recorded and verified in:
-
-```jsonc
-// deployment/studionet.json
-"frontendUrl": "https://reality-bridge-beta.vercel.app"
-```
-
-## Task 4 — Two-wallet journey against the public URL (done)
-
-The journey ran against the **hosted URL**, not localhost, with two real wallet
-profiles on StudioNet chain `61999`. Round 4 settled `YES`; both claims were
-accepted and the on-chain `claimed_amount` equals the round pool.
-
-Hosted URL: [`https://reality-bridge-beta.vercel.app`](https://reality-bridge-beta.vercel.app)
-
-| Step | Wallet / transaction |
-| --- | --- |
-| Wallet 1 joined | `0x957dfe74cbe381eeb16d48fb23202d1f824d9831ec25fa6afcdc6071a542e13b` |
-| Wallet 2 joined | `0xcf3b802c4f45bbd731ee5cbd43d652a8c3354f168e3a300722766f610946a7ff` |
-| Round started (wallet 2) | `0x979abe50000431985f4b3451ef65f2de5a292f87a1e41f3cbb193b591e96cffe` |
-| Wallet 1 committed `YES` | `0xa8056890ce385a68da7bb5326b101fba5d4e5678996cb09f66297e2e5f9c27bf` |
-| Wallet 1 revealed `YES` | `0x347f511c68e334c955feb81740e469e3c3bab3d53a5798f4c8527aa6142e4b6b` |
-| Permissionless resolution requested (wallet 2) | `0x2c3c6bc33f3c37ebd407b4f0ed1d6eda0db37f4c21703d9e961ea0df71eb4994` |
-| Wallet 1 claimed `0.016 GEN` | `0x717b661179c9b59809241686f87f9d9f72f22fd1b88d638cae8a9d5f34dfa04e` |
-| Wallet 2 claimed `0.004 GEN` | `0x1ec88863e5d7c7a3d3f1b60ddf514c54552a5df395a0badcaa4a575843c6fa2a` |
-
-Independent `show_round.py 4` reads confirmed `SETTLED`, panel outcome `YES`,
-reason `FINAL_EVIDENCE`, one attempt, evidence receipt
-`77839f48ea5854f466c6ff6ffbfa5de5a6b176bad3503173158316da44c23f4c`, pool
-`0.020 GEN`, and `claimed_amount == pool`. The global contract still shows a
-historical `0.010 GEN` reserve from round 3's unclaimed seat; that is unrelated
-to round 4's fully claimed pool.
-
-The connected browser surface has no video recorder, so this is a textual and
-on-chain evidence record rather than an uncut video. Keep
-`recordedDemonstration` false until an actual recording is attached.
-
-The original manual setup is retained below for rerunning a fresh round.
+## Play a round by hand
 
 Set up each wallet on StudioNet — chain `61999` (`0xf22f`), RPC
 `https://studio.genlayer.com/api`, symbol `GEN`, 18 decimals. The app's
-*Switch to GenLayer StudioNet* button does this.
+*Switch to GenLayer StudioNet* button does this, and its top-up button funds a
+connected wallet that cannot cover the entry.
 
-Fund each. The app offers a **Get test GEN** button whenever a connected
-wallet cannot cover the entry; the equivalent by hand (StudioNet has no faucet
-page, only this RPC method) is:
-
-```bash
-curl -s -X POST https://studio.genlayer.com/api -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"sim_fundAccount","params":["0xYOUR_ADDRESS",5000000000000000000],"id":1}'
-```
-
-Then walk the journey (record it uncut if a recorder is available):
-
-1. Wallet A joins — read the pre-signature disclosure aloud before signing.
-2. Wallet B joins.
-3. After the join window closes, press **Start the round** (permissionless —
-   works from any wallet).
-4. Runner picks a side. Copy **and** download the recovery bundle, tick the
-   confirmation; only then does commit enable.
+1. Wallet A joins; read the pre-signature disclosure before signing.
+2. Wallet B joins. **Two seats are required for a round to start.**
+3. After the join window closes, press **Start the round** — permissionless.
+4. The runner picks a side, copies **and** downloads the recovery bundle, and
+   ticks the confirmation; only then does commit enable.
 5. **Prove recovery**: clear site data or open a fresh profile, then restore
    the bundle before revealing. It is validated against wallet, contract,
    round, panel and the on-chain commitment.
 6. Reveal.
-7. After the evidence timestamp, **Ask validators to resolve**.
+7. After the panel's instant, **Ask validators to resolve**. If the target
+   block is not mined yet the panel stays `PENDING` and the call is retryable;
+   that is correct behaviour, not a failure.
 8. Claim from both wallets. Confirm a second claim is refused.
 
-Verify each step against chain state in a second terminal:
+Watch chain state in a second terminal:
 
 ```bash
 python genlayer/scripts/show_round.py --watch
@@ -192,11 +133,6 @@ python genlayer/scripts/show_round.py --watch
 lag: authoritative reads use the finalized variant, so the board trails an
 accepted transaction briefly.
 
-After an actual uncut recording is attached, update `SUBMISSION.md` and set
-`recordedDemonstration` to `true` in the manifest. Until then it remains
-`false`; the signed journey itself is complete and already recorded in the
-manifest.
-
 ## Gotchas that will otherwise waste your time
 
 - **An unfunded account looks like a hang, not an error.** The transaction is
@@ -204,12 +140,12 @@ manifest.
 - **Unroutable IPv6 adds ~43 s to every RPC call.** The Python tooling handles
   this via `genlayer/scripts/netprefs.py`. If a hosted run appears to hang for
   tens of minutes, that is the cause.
+- **A non-ASCII character in the contract source breaks deployment.** Schema
+  generation transmits the source as ASCII, so a single em dash in a docstring
+  fails every client with an opaque "failed to get schema" that never mentions
+  encoding. Asserted by `test_contract_source_is_pure_ascii`.
 - **The integration suite must run from `genlayer/`** so `gltest.config.yaml`
-  is found. It refuses to start elsewhere unless that StudioNet configuration
-  is present:
-  ```bash
-  cd genlayer && python -m pytest tests/integration -q -s
-  ```
+  is found.
 - **`genvm-lint validate` needs `GENVMROOT`.** The latest artifact bundle no
   longer ships the pinned runner:
   ```bash
@@ -225,20 +161,11 @@ manifest.
   validation fails, fix `GENVMROOT`, not the pin.
 - StudioNet as the only network. CI fails on any other GenLayer network
   appearing anywhere, including documentation.
-- `next` pinned exactly at `16.3.3`. Read
-  `node_modules/next/dist/docs/` before any framework change — this version has
-  breaking changes relative to older training data.
-- The published question must stay genuinely future-resolving.
-
-## Full verification before submitting
-
-```bash
-python -m pytest genlayer/tests/direct -q                 # 61 passed
-GENVMROOT=.genvmroot genvm-lint check genlayer/contracts/reality_bridge.py
-npm --prefix frontend run typecheck
-npm --prefix frontend run lint
-npm --prefix frontend run test                            # 104 passed
-npm --prefix frontend run build
-npm --prefix frontend audit --audit-level=high            # 0 vulnerabilities
-cd genlayer && python -m pytest tests/integration -q -s   # ~3 min, real network
-```
+- `next` pinned exactly at `16.3.3`. Read `node_modules/next/dist/docs/`
+  before any framework change — this version has breaking changes relative to
+  older training data.
+- **The shape of the published question.** It must rest on a datum that is
+  fixed once it exists, so the answer cannot depend on when resolution runs.
+  A live, moving value — a current tip height, a "latest" reading, a score in
+  progress — reintroduces the defect corrected in `48839ee`. See
+  *Caller-chosen outcomes through resolution timing* in `SECURITY.md`.

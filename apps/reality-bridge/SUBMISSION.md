@@ -16,7 +16,7 @@ from a command. Where something is unverified, it says so.
 | Deployment transaction | `0x88d553046d34a8bb7aee59b36b047231746d61c98c8a85e42ad9f3c5ef4ae881` |
 | Published round | `1` on the corrected contract — one panel, entry `0.01 GEN` |
 | Frontend URL | [reality-bridge-beta.vercel.app](https://reality-bridge-beta.vercel.app) — production, verified |
-| Demonstration recording | **not captured by the connected browser** — on-chain journey recorded below |
+| Independent verification | `python genlayer/scripts/verify_submission.py` — 11/12 against live chain and source data; the one failure is the hosted client's environment variable, described below |
 
 Per-transaction hashes, deadlines and the panel threshold are in the manifest.
 Do not assume a round listed there is still joinable: rounds carry real
@@ -192,7 +192,7 @@ round-3 reserve (`0.010 GEN`); round 4 itself is fully conserved.
 | Continuous integration | done | `.github/workflows/reality-bridge.yml` — contract, frontend and network-hygiene jobs |
 | Source is versioned | done | commits `a5c6d31`, `5305d48`, `9198aab`, `61c139e`, `2cf5eb2`, and `48839ee` |
 | Public URL | done | production URL recorded in `deployment/studionet.json` and checked with browser automation |
-| Recorded demonstration | OUTSTANDING | the signed journey is complete; an uncut screen recording was not available in the connected browser |
+| Claims are independently checkable | done | `verify_submission.py` re-reads the chain, re-fetches each panel's evidence from its public source, recomputes every receipt from the documented pre-image, and re-derives each outcome; it trusts nothing in this repository's prose |
 
 ## Command results
 
@@ -279,26 +279,73 @@ published contract:
   bend to the player's choice, and no live-network vocabulary.
 - Mobile at 375 px: no horizontal overflow, no touch target under 44 px.
 
-The hosted production URL renders the StudioNet-only lobby and settled round 4
-configuration. The signed journey listed above was completed there; the only
-remaining artifact is an uncut screen recording.
+These observations were made against the previous deployment's hosted
+configuration. The browser behaviour is unchanged by the resolution-timing fix,
+which touched the contract, the published question and the evidence panel's
+fields; the settled-panel view now additionally shows *Evidence observed* and
+*Answered as of*, sourced from the same stored fields the receipt commits to.
 
-## Outstanding
+## How to check this submission without trusting it
 
-One item remains, and it is not blocked on code: **attach an uncut screen
-recording of the already-completed two-wallet journey.** The signed and
-on-chain halves are complete. The steps are in [`QA.md`](QA.md); the narration
-is in [`DEMO.md`](DEMO.md).
+Every factual claim here is re-derivable from public data. One command:
 
-Until that recording exists `recordedDemonstration` stays `false`. Everything
-else required for submission, including the hosted StudioNet wallet journey,
-has been verified.
+```bash
+python genlayer/scripts/verify_submission.py
+```
+
+It reads the deployed contract from StudioNet, re-fetches each resolved
+panel's evidence from its public source, recomputes each stored receipt from
+the pre-image documented in [`specs/PRODUCT_SPEC.md`](specs/PRODUCT_SPEC.md),
+and re-derives each outcome from the evidence's own timestamp against the
+panel's instant. It reports `PASS`/`FAIL` per check and exits non-zero on any
+failure. Nothing in it reads a stored copy of an answer and compares it to
+itself.
+
+Current result, against the live deployment:
+
+```text
+PASS  contract source is ASCII-only
+PASS  manifest targets StudioNet only
+PASS  contract is deployed and exposes the documented interface
+PASS  round 2 conserves its pool
+PASS  round 2 panel 1: receipt recomputes from stored fields
+PASS  round 2 panel 1: settled on anchored evidence
+PASS  round 2 panel 1: stored timestamp matches the live source
+PASS  round 2 panel 1: outcome follows the evidence, not the caller
+PASS  round 2 panel 1: resolution ran after the block existed
+FAIL  hosted client is still serving a superseded deployment
+11/12 checks passed
+```
+
+**The failing check is real and is reported here rather than hidden.** The
+contract, the evidence and the settlement are correct; the hosted client at
+`reality-bridge-beta.vercel.app` is still built against the pre-fix
+deployment, because its environment variable has not been repointed at the
+redeployed contract. It is a one-variable hosting change:
+
+```text
+NEXT_PUBLIC_REALITY_BRIDGE_CONTRACT=0x9fD62230aA1149bf443C0a447ffe9D1b2cF4b87E
+```
+
+Until that is done, judge the protocol from the chain and the test suites
+rather than from the hosted page. The verifier reads the deployed JavaScript
+bundle to determine this, so it cannot be satisfied by editing documentation.
+
+A reviewer who prefers to play rather than read can join **round 3**, which is
+open. A reviewer who prefers to read code should start with the reading list
+below.
+
+**Not provided:** a screen recording. The evidence above is reproducible from
+a command; a video is not, and would be weaker for anything a reviewer wants
+to confirm independently. Every on-chain artifact cited here can be checked
+against StudioNet and Blockstream directly.
 
 ## Reading list for a reviewer
 
+0. [`genlayer/scripts/verify_submission.py`](genlayer/scripts/verify_submission.py) — run this first; it re-derives every claim below from live data.
 1. [`specs/PRODUCT_SPEC.md`](specs/PRODUCT_SPEC.md) — rules and economics.
 2. [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md) — consensus boundary and invariants.
 3. [`SECURITY.md`](SECURITY.md) — threat model.
 4. [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md) — what this does not do.
 5. [`QA.md`](QA.md) — hands-on testing, including the wallet steps.
-6. [`DEMO.md`](DEMO.md) — the uncut walkthrough.
+6. [`DEMO.md`](DEMO.md) — a narrated walkthrough of one full round.

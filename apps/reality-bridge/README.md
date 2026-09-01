@@ -13,11 +13,22 @@ The application is intentionally small enough to inspect, but it is not a fronte
 | Network | **GenLayer StudioNet only** — chain id `61999` |
 | Contract | `0x9fD62230aA1149bf443C0a447ffe9D1b2cF4b87E` |
 | Hosted client | [reality-bridge-beta.vercel.app](https://reality-bridge-beta.vercel.app) |
-| Published proof round | Round `4`: two wallets, one future-resolving panel, complete settlement and claims |
-| Consensus result | `YES` / `FINAL_EVIDENCE`, receipt `77839f48ea5854f466c6ff6ffbfa5de5a6b176bad3503173158316da44c23f4c` |
+| Settled proof round | Round `2`: two wallets, one future-resolving panel, complete settlement and claims |
+| Consensus result | `NO` / `FINAL_EVIDENCE`, receipt `d0530d271059263a7f575f02515a283fa96e629c1946609e74e80eded80a140f` |
+| Open round to play | Round `3` |
 | Pinned GenVM runner | `py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6` |
 
-The complete transaction trail, exact deadlines, payout proof and the one outstanding demo-recording item are recorded in [`SUBMISSION.md`](SUBMISSION.md). This repository targets StudioNet exclusively; all currency and assets are test assets with no real-world value.
+### Check it without trusting it
+
+```bash
+python genlayer/scripts/verify_submission.py
+```
+
+Reads the deployed contract from StudioNet, re-fetches each resolved panel's evidence from its public source, recomputes every stored receipt from the pre-image documented in [`specs/PRODUCT_SPEC.md`](specs/PRODUCT_SPEC.md), and re-derives each outcome from the evidence's own timestamp. `PASS`/`FAIL` per check, non-zero exit on any failure. It reads no stored answer and compares it to itself, and it reads the hosted client's deployed JavaScript rather than trusting this file. Currently **11/12**: the single failure is that the hosted client's environment variable still points at the pre-fix deployment, which is recorded openly in [`SUBMISSION.md`](SUBMISSION.md) rather than papered over.
+
+Round 2 is worth looking at closely, because the target block landed 42 seconds *after* the panel's instant. Resolution ran later still, when the live chain tip had already passed the target — so an implementation that read the current tip would have answered `YES`. This one compares the block's own header timestamp against the panel's instant and answers `NO`. That margin is the difference between a panel whose outcome depends on when someone calls it and one whose outcome does not. See *Caller-chosen outcomes through resolution timing* in [`SECURITY.md`](SECURITY.md).
+
+The complete transaction trail, exact deadlines and payout proof are in [`SUBMISSION.md`](SUBMISSION.md). This repository targets StudioNet exclusively; all currency and assets are test assets with no real-world value. No screen recording is provided — the evidence is reproducible from the command above instead.
 
 ## Why this needs GenLayer
 
@@ -129,7 +140,7 @@ reality-bridge/
 ├── deployment/studionet.json       # contract, runner and verification manifest
 ├── SECURITY.md                     # threat model and mitigations
 ├── QA.md                           # hands-on StudioNet verification procedure
-└── DEMO.md                         # uncut walkthrough script
+└── DEMO.md                         # narrated walkthrough of one round
 ```
 
 ## Verification

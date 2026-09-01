@@ -13,13 +13,12 @@ if (!globalThis.crypto?.subtle) {
   });
 }
 
-// The default 1s async budget is far too tight when eight suites run in
-// parallel: several jsdom environments contend for the same cores and a
-// component that renders promptly in isolation can take seconds to settle.
-// The failures that produced were contention, not defects. A wait ends as
-// soon as its element appears, so a generous ceiling costs passing runs
-// nothing and only lengthens genuine failures.
-configure({ asyncUtilTimeout: 15000 });
+// The default 1s async budget is tight for the heaviest suites, which render
+// the whole app and settle several rounds of state. The real cause of the
+// intermittent failures was worker thrashing, fixed by capping the pool in
+// vitest.config.mts; this is headroom, not a workaround. A wait ends as soon
+// as its element appears, so it costs passing runs nothing.
+configure({ asyncUtilTimeout: 5000 });
 
 if (!("clipboard" in navigator)) {
   Object.defineProperty(navigator, "clipboard", {
