@@ -89,9 +89,31 @@ Every panel commits every field that can affect settlement:
 | `VOID`  | `VOID_EVIDENCE`        | Cancelled, contradictory or permanently unanswerable.        |
 | `VOID`  | `VOID_CONTRADICTION`   | A corroborating source contradicted the primary source.      |
 | `VOID`  | `VOID_LIVENESS`        | The panel passed its information cut-off with no valid commitment behind it. |
+| `VOID`  | `VOID_UNANCHORED`      | The evidence carried no timestamp, so the answer could not be tied to the panel's instant. |
 | —       | `UNRESOLVED`           | Not written. Retryable; no deadline moves and no state changes. |
 
 `VOID` is never treated as `NO`. It eliminates nobody and awards nothing.
+
+### A panel is answered as of a fixed instant
+
+Every panel carries a `resolution_time`, and that instant — not the moment
+resolution happens to run — is what the question is answered against. The
+contract passes it into the consensus block, and the model must report
+`observed_at`: the timestamp the evidence page itself carried for the
+observation it relied on.
+
+This is not a nicety. Resolution is permissionless, so if a panel were
+answered against "now", any condition that becomes true over time would let
+the caller choose the outcome by choosing when to call. A published question
+must therefore rest on a datum that is fixed once it exists — a block header
+timestamp, a settlement time, a published result — rather than on a live,
+moving value.
+
+Both the as-of instant and `observed_at` are inside the hashed evidence
+receipt, so the stored record commits to when the answer was true. A `FINAL`
+without an `observed_at` from the page is refused and the panel is voided
+(`VOID_UNANCHORED`). Where a source cannot answer yet, the correct state is
+the retryable `UNRESOLVED`, never an outcome.
 
 ### Evidence receipt
 
@@ -101,9 +123,17 @@ For every written outcome the contract stores a deterministic receipt:
 operator-supplied string so a stored value can never forge a pre-image.
 
 ```text
-sha256("reality-bridge-evidence-v1" <US> round_id <US> tile_index <US> primary_host
-       <US> status <US> outcome <US> event_id <US> effective_date)
+sha256("reality-bridge-evidence-v2" <US> round_id <US> tile_index <US> primary_host
+       <US> status <US> outcome <US> event_id <US> effective_date
+       <US> resolution_time <US> observed_at)
 ```
+
+The last two fields are the timing. `resolution_time` is the instant the panel
+was answered as of; `observed_at` is the Unix second the evidence itself gave
+for the observation relied on, normalized to a decimal integer (a free-text
+date would not canonicalize identically across validators, and this field is
+compared exactly). The version prefix moved from `v1` to `v2` with them, so a
+receipt from either scheme cannot be mistaken for the other.
 
 `event_id` and `effective_date` are **normalized extraction fields** taken from
 the page: an identifier folded to `[A-Z0-9.:/_-]` (max 48 characters, `NONE`

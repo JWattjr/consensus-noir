@@ -76,15 +76,25 @@ STATUS_NAMES = {
 # A static fixture page can be read before committing, which demonstrates the
 # consensus plumbing but not the product: predicting an unresolved event.
 #
-# Bitcoin block height is public, path-addressed, monotonic and unambiguous,
-# and nobody knows its value at a future instant. The threshold is computed
-# from the live height at publish time so the question is genuinely open.
+# The panel asks whether a *specific* future block was mined by a *fixed*
+# instant, and reads it from a height-addressed URL.
+#
+# The obvious phrasing - "is the tip height above N" against the live tip
+# endpoint - is broken, and was: tip height only ever rises, so the same panel
+# answers NO to an early caller and YES to a late one, letting whoever chooses
+# when to call resolution choose a payout. A block's header timestamp, by
+# contrast, is fixed the moment it is mined and never changes, so the answer
+# is the same whenever anyone asks. Until the block exists the panel is simply
+# not answerable yet, which is the retryable UNRESOLVED state rather than an
+# outcome.
 EVIDENCE_HOST = "blockstream.info"
 EVIDENCE_LABEL = "Blockstream public Bitcoin block explorer API"
-EVIDENCE_PATH = "/api/blocks/tip/height"
+#: Height-addressed and immutable once mined: /api/blocks/<height>.
+EVIDENCE_PATH_TEMPLATE = "/api/blocks/{height}"
 
-#: How far above the height at publish time the threshold sits. Larger means a
-#: more certain YES; smaller means a more genuinely uncertain prediction.
+#: How far above the height at publish time the target block sits. Larger
+#: means a later block and so a more likely NO; smaller means a more genuinely
+#: uncertain prediction.
 DEFAULT_BLOCK_MARGIN = 1
 
 #: Fixture host used by the hosted integration test, kept registered so that
@@ -175,12 +185,19 @@ def send(client, account, address, method, args, label, value=0):
     return str(tx_hash)
 
 
+#: Live tip endpoint. Used once, at publish time, only to choose a target
+#: block that does not exist yet. It is never the panel's evidence source -
+#: that would reintroduce the timing dependency this question is built to
+#: avoid.
+TIP_HEIGHT_PATH = "/api/blocks/tip/height"
+
+
 def current_block_height() -> int:
-    """Read the live Bitcoin tip height used to set the panel's threshold."""
+    """Read the live Bitcoin tip height, to pick a block that is still future."""
 
     import urllib.request
 
-    url = f"https://{EVIDENCE_HOST}{EVIDENCE_PATH}"
+    url = f"https://{EVIDENCE_HOST}{TIP_HEIGHT_PATH}"
     request = urllib.request.Request(url, headers={"User-Agent": "reality-bridge"})
     with urllib.request.urlopen(request, timeout=30) as response:
         return int(response.read().decode("utf-8").strip())
@@ -406,23 +423,33 @@ def main() -> int:
             ],
             "create_round",
         )
-        # The threshold is fixed from the height at publish time, so at the
-        # moment players commit the answer genuinely does not exist yet.
+        # The target block does not exist at publish time, so at the moment
+        # players commit, the answer genuinely does not exist yet either.
         height_at_publish = current_block_height()
         threshold = height_at_publish + options.block_margin
         log(
             f"Bitcoin tip height at publish: {height_at_publish}; "
-            f"panel threshold: {threshold}"
+            f"panel block: {threshold}"
         )
-        evidence_url = f"https://{EVIDENCE_HOST}{EVIDENCE_PATH}"
+        evidence_url = (
+            f"https://{EVIDENCE_HOST}"
+            f"{EVIDENCE_PATH_TEMPLATE.format(height=threshold)}"
+        )
         question = (
-            f"Will the Bitcoin block height reported by the registered source "
-            f"be greater than {threshold} at the evidence timestamp?"
+            f"Was Bitcoin block {threshold} mined at or before "
+            f"{iso(resolution_time)}?"
         )
         condition = (
-            f"The registered source returns the current Bitcoin tip height as a "
-            f"plain integer. YES when that integer is strictly greater than "
-            f"{threshold}; otherwise NO."
+            f"The registered source returns JSON for the block at height "
+            f"{threshold}, including a `timestamp` field holding the block "
+            f"header time as a Unix second. YES when that timestamp is less "
+            f"than or equal to {resolution_time}. NO when it is greater than "
+            f"{resolution_time}. A mined block's timestamp never changes, so "
+            f"this answer is the same whenever it is asked. If the source "
+            f"reports that no block exists at height {threshold}, the chain "
+            f"has not reached that height yet and the answer is not available "
+            f"yet: return UNRESOLVED rather than an outcome. Report "
+            f"`observed_at` as that block's `timestamp`."
         )
 
         transactions["add_tile"] = send(
@@ -469,7 +496,8 @@ def main() -> int:
             "evidenceUrl": evidence_url,
             "question": question,
             "blockHeightAtPublish": height_at_publish,
-            "threshold": threshold,
+            "targetBlockHeight": threshold,
+            "evidenceAnchor": "block header timestamp, compared against resolutionTime",
             "transactions": {
                 key: transactions[key]
                 for key in ("create_round", "add_tile", "open_round")

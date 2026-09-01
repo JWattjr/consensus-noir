@@ -69,6 +69,7 @@ export function tile(index: number, overrides: Partial<TileView> = {}): TileView
     evidence_receipt: "",
     event_id: "",
     effective_date: "",
+    observed_at: "",
     resolved_at: 0,
     opener_index: 0,
     attempts: 0,

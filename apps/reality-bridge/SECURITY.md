@@ -67,6 +67,36 @@ runner answer with knowledge. No commitment is accepted at or after
 `tile.choice_deadline`, and a recovery that arrives past that instant voids the
 panel (`VOID_LIVENESS`) instead of re-arming it.
 
+### Caller-chosen outcomes through resolution timing
+
+Resolution is permissionless: anyone may call it once a panel is resolvable.
+If a panel were answered against the world *at the moment of the call*, then
+any condition that becomes true over time would hand the outcome to whoever
+chose when to call. The published Bitcoin panel had exactly this shape — "is
+the tip height above N", read from a live tip endpoint. Tip height only rises,
+so the same panel answered `NO` to an early caller and `YES` to a late one,
+with real money on the result.
+
+Three things now prevent it:
+
+- The panel's own `resolution_time` is passed into the consensus block and the
+  condition is answered **as of that instant**, never as of the call.
+- A settling answer must carry `observed_at`, the timestamp the evidence page
+  itself gave for the observation relied on. A `FINAL` without one is refused
+  and the panel is voided (`VOID_UNANCHORED`).
+- Both instants are inside the hashed receipt, so the stored record commits to
+  when the answer was true rather than only to what it was.
+
+The published question was also reformulated onto a datum that is fixed once
+it exists — a specific block's header timestamp, read from a height-addressed
+URL — instead of a live, moving value. A source that cannot answer yet yields
+the retryable `UNRESOLVED`, which moves no deadline and changes no state,
+rather than an outcome. Covered by
+`test_caller_timing_cannot_move_a_payout_bearing_outcome`,
+`test_a_final_without_a_timestamped_observation_is_voided`,
+`test_receipt_binds_the_timestamp_the_evidence_carried` and
+`test_a_junk_observation_timestamp_is_refused_rather_than_stored`.
+
 ### Ordering race at the terminal deadline
 
 A revealed final panel plus a lapsed terminal deadline used to leave two valid

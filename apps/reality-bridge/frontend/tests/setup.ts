@@ -13,9 +13,13 @@ if (!globalThis.crypto?.subtle) {
   });
 }
 
-// The default 1s async budget is tight when five suites run in parallel on a
-// busy machine, which showed up as intermittent failures rather than real ones.
-configure({ asyncUtilTimeout: 5000 });
+// The default 1s async budget is far too tight when eight suites run in
+// parallel: several jsdom environments contend for the same cores and a
+// component that renders promptly in isolation can take seconds to settle.
+// The failures that produced were contention, not defects. A wait ends as
+// soon as its element appears, so a generous ceiling costs passing runs
+// nothing and only lengthens genuine failures.
+configure({ asyncUtilTimeout: 15000 });
 
 if (!("clipboard" in navigator)) {
   Object.defineProperty(navigator, "clipboard", {

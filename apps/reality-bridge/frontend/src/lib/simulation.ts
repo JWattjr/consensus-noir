@@ -190,6 +190,7 @@ function simulationTile(index: number, base: number): TileView {
     evidence_receipt: "",
     event_id: "",
     effective_date: "",
+    observed_at: "",
     resolved_at: 0,
     opener_index: 0,
     attempts: 0,
@@ -483,6 +484,9 @@ export function simulateResolve(state: SimulationState): SimulationState {
             evidence_receipt: `simulated-${state.scenarioId}-${tileIndex}`,
             event_id: `SIM-PANEL-${tileIndex + 1}`,
             effective_date: "2035-01-01",
+            // The scripted panel is anchored the same way a live one is: the
+            // observation predates the instant the panel is answered as of.
+            observed_at: String(tile.resolution_time - 120),
             resolved_at: tile.resolution_time,
             opener_index: runnerIndex,
             attempts: tile.attempts + 1,

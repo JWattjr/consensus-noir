@@ -78,6 +78,8 @@ export interface TileView {
   evidence_receipt: string;
   event_id: string;
   effective_date: string;
+  /** Unix second the evidence itself carried, as a decimal string. */
+  observed_at: string;
   resolved_at: number;
   opener_index: number;
   attempts: number;
@@ -232,6 +234,7 @@ export function normaliseTile(value: unknown): TileView {
     evidence_receipt: asText(raw.evidence_receipt),
     event_id: asText(raw.event_id),
     effective_date: asText(raw.effective_date),
+    observed_at: asText(raw.observed_at),
     resolved_at: asNumber(raw.resolved_at),
     opener_index: asNumber(raw.opener_index),
     attempts: asNumber(raw.attempts),

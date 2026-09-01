@@ -11,7 +11,7 @@ The application is intentionally small enough to inspect, but it is not a fronte
 | Item | Verified value |
 | --- | --- |
 | Network | **GenLayer StudioNet only** — chain id `61999` |
-| Contract | `0x4DE4c2aFC908fd744b65Fe8361FEE4Dc1C5c8CA9` |
+| Contract | `0x9fD62230aA1149bf443C0a447ffe9D1b2cF4b87E` |
 | Hosted client | [reality-bridge-beta.vercel.app](https://reality-bridge-beta.vercel.app) |
 | Published proof round | Round `4`: two wallets, one future-resolving panel, complete settlement and claims |
 | Consensus result | `YES` / `FINAL_EVIDENCE`, receipt `77839f48ea5854f466c6ff6ffbfa5de5a6b176bad3503173158316da44c23f4c` |
@@ -101,7 +101,7 @@ These choices make the client easier to trust during a demo: it represents proto
 
 ## Verified two-wallet result
 
-Round 4 asked a genuinely future-resolving question: whether the Bitcoin block height from the registered public source would exceed a threshold at the later evidence timestamp. At commit time, the answer did not yet exist.
+The published round asks a genuinely future-resolving question: whether a specific Bitcoin block - one above the tip at publish time, so it does not exist yet - was mined at or before the panel's evidence instant. At commit time the answer does not yet exist, and because a mined block's header timestamp never changes, the answer is the same whoever resolves it and whenever they do. An earlier version of this question read the *current* tip height, which let a late caller flip the outcome; see SECURITY.md.
 
 | Account | Protocol role | Final result |
 | --- | --- | --- |

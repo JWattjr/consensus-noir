@@ -50,12 +50,28 @@ CHOICE_DEADLINE = BASE_TS + 900  # exactly join_deadline + commit window
 RESOLUTION_TIME = BASE_TS + 960  # exactly choice_deadline + reveal grace
 TERMINAL_DEADLINE = BASE_TS + 7200
 
-EVIDENCE_HOST = "test-server.genlayer.com"
-EVIDENCE_URL = f"https://{EVIDENCE_HOST}/static/genvm/hello.html"
-QUESTION = "Does the registered evidence page display the phrase Hello world?"
+# The panel must be answerable *as of a fixed instant*, which means the
+# evidence has to carry its own timestamp. A static fixture page cannot: it
+# says what is true whenever you happen to load it, so an answer derived from
+# it is an answer about the moment resolution ran. This suite therefore
+# exercises the same height-addressed, immutable source production uses.
+#
+# The block is long since mined, so the outcome is deterministic (its header
+# time is far below the simulated 2035 resolution instant) while still
+# travelling the real anchored path end to end.
+EVIDENCE_HOST = "blockstream.info"
+TARGET_BLOCK = 900000
+EVIDENCE_URL = f"https://{EVIDENCE_HOST}/api/blocks/{TARGET_BLOCK}"
+QUESTION = (
+    f"Was Bitcoin block {TARGET_BLOCK} mined at or before "
+    f"2035-01-01T00:16:00Z?"
+)
 YES_CONDITION = (
-    "YES when the rendered page visibly contains the phrase Hello world; "
-    "otherwise NO."
+    f"The registered source returns JSON for the block at height "
+    f"{TARGET_BLOCK}, including a `timestamp` field holding the block header "
+    f"time as a Unix second. YES when that timestamp is less than or equal to "
+    f"{BASE_TS + 960}. NO when it is greater. Report `observed_at` as that "
+    f"block's `timestamp`."
 )
 
 SALT = "studionet-salt-v2"
@@ -85,10 +101,17 @@ def commitment(address: str, choice: str = "YES") -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def evidence_receipt(host: str, status: str, outcome: str, event_id: str, date: str) -> str:
-    canonical = "\x1f".join(
+def evidence_receipt(
+    host: str,
+    status: str,
+    outcome: str,
+    event_id: str,
+    date: str,
+    observed_at: str,
+) -> str:
+    canonical = "".join(
         (
-            "reality-bridge-evidence-v1",
+            "reality-bridge-evidence-v2",
             "1",
             "0",
             host,
@@ -96,6 +119,8 @@ def evidence_receipt(host: str, status: str, outcome: str, event_id: str, date: 
             outcome,
             event_id,
             date,
+            str(RESOLUTION_TIME),
+            observed_at,
         )
     )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -166,7 +191,9 @@ def test_studionet_round_from_deployment_to_withdrawal():
     log(f"deployed at {contract.address} in {time.time() - started:.0f}s")
 
     send(
-        contract.register_source(args=[EVIDENCE_HOST, "GenLayer test fixture server"]),
+        contract.register_source(
+            args=[EVIDENCE_HOST, "Blockstream public Bitcoin block explorer API"]
+        ),
         "register_source",
         transaction_context=context(BASE_ISO),
     )
@@ -261,12 +288,23 @@ def test_studionet_round_from_deployment_to_withdrawal():
 
     tile = contract.get_tile(args=[1, 0]).call()
     log(f"tile outcome={tile['outcome']} reason={tile['reason_code']} "
-        f"event_id={tile['event_id']} date={tile['effective_date']}")
+        f"event_id={tile['event_id']} date={tile['effective_date']} "
+        f"observed_at={tile['observed_at']}")
     assert tile["status"] == "RESOLVED"
     assert tile["outcome"] == "YES"
     assert tile["reason_code"] == "FINAL_EVIDENCE"
+    # The panel settled on evidence that carried its own timestamp, and that
+    # timestamp is inside the receipt: the record says when the answer was
+    # true, not merely what it was.
+    assert tile["observed_at"], "a settled panel must record when its evidence was true"
+    assert int(tile["observed_at"]) <= RESOLUTION_TIME
     assert tile["evidence_receipt"] == evidence_receipt(
-        EVIDENCE_HOST, "FINAL", "YES", tile["event_id"], tile["effective_date"]
+        EVIDENCE_HOST,
+        "FINAL",
+        "YES",
+        tile["event_id"],
+        tile["effective_date"],
+        tile["observed_at"],
     )
 
     round_view = contract.get_round(args=[1]).call()

@@ -11,10 +11,10 @@ from a command. Where something is unverified, it says so.
 | Artifact | Value |
 | -------- | ----- |
 | Pinned GenVM runner | `py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6` |
-| Published contract | `0x4DE4c2aFC908fd744b65Fe8361FEE4Dc1C5c8CA9` |
+| Published contract | `0x9fD62230aA1149bf443C0a447ffe9D1b2cF4b87E` |
 | Publisher account | `0xf19AA039E52fC65A23f2f98FBA15081244C32d4d` |
-| Deployment transaction | `0xb0861ef6bcf63aacd58c06662333a80d3ee675aeb59f7cc0fffd43e0dd9cafd3` |
-| Published round | `4` — one panel, two seats, entry `0.01 GEN` |
+| Deployment transaction | `0x88d553046d34a8bb7aee59b36b047231746d61c98c8a85e42ad9f3c5ef4ae881` |
+| Published round | `1` on the corrected contract — one panel, entry `0.01 GEN` |
 | Frontend URL | [reality-bridge-beta.vercel.app](https://reality-bridge-beta.vercel.app) — production, verified |
 | Demonstration recording | **not captured by the connected browser** — on-chain journey recorded below |
 
@@ -25,17 +25,61 @@ deadlines and expire. Publish a fresh one using the recipes in
 
 ### The published round poses a genuinely open question
 
-> Will the Bitcoin block height reported by the registered source be greater
-> than **964788** at the evidence timestamp?
+> Was Bitcoin block **965073** mined at or before **2026-09-01T19:14:31Z**?
 
-The threshold is computed from the live tip height at publish time (`964787`),
-so at the moment a player commits, the answer does not exist yet. The evidence
-source is `https://blockstream.info/api/blocks/tip/height`: public,
-path-addressed, monotonic and unambiguous.
+The target block does not exist when the round is published — it is ten above
+the live tip at that moment (`965063`), roughly an hour and three quarters of
+mining away from the panel's instant, so it is genuinely uncertain — so at the moment a player commits, the answer
+does not exist yet.
 
-An earlier build published a question against a static fixture page whose
-answer was readable before committing. That exercised the consensus plumbing
-but not the product, and has been replaced.
+The evidence source is `https://blockstream.info/api/blocks/965073`:
+height-addressed, public, and **immutable once mined**. A block's header
+timestamp is fixed when it is found and never changes, so this panel returns
+the same answer whoever asks and whenever they ask.
+
+Two earlier versions of this question were defective, and both are worth
+recording because the second is subtle:
+
+1. A static fixture page whose answer was readable before committing. That
+   exercised the consensus plumbing but not the product.
+2. *"Will the tip height be greater than N at the evidence timestamp?"* read
+   from `/api/blocks/tip/height`. The wording named a scheduled instant but
+   the source reports the tip **now**, and tip height only ever rises — so the
+   same panel answered NO to an early caller and YES to a late one. Resolution
+   is permissionless, so whoever chose when to call was choosing a
+   payout-bearing outcome. This was caught in review and is fixed.
+
+### Resolution is bound to the panel's instant, not the caller's clock
+
+The contract now passes the panel's own evidence instant into the consensus
+block, requires the model to answer the condition **as of that instant**, and
+requires it to report `observed_at` — the timestamp the evidence page itself
+carried for the observation relied on. Both the as-of instant and
+`observed_at` are inside the hashed receipt, so a stored receipt commits to
+*when* the answer was true and not merely to what it was.
+
+A FINAL that cannot produce a timestamp from the page is refused and the panel
+is voided (`VOID_UNANCHORED`) rather than settled, because an answer that
+cannot say when it was true is an answer about whenever resolution happened to
+run. Where a source cannot answer yet — the target block is not mined — the
+panel stays in the retryable `UNRESOLVED` state, which changes no state and
+moves no deadline, instead of resolving to an outcome.
+
+Receipts are versioned `reality-bridge-evidence-v2`; a v1 receipt cannot be
+mistaken for a v2 one.
+
+### The previous deployment, and what its evidence does and does not prove
+
+Rounds 1-4 were published on `0x4DE4c2aFC908fd744b65Fe8361FEE4Dc1C5c8CA9`, the deployment that carried the
+defective tip-height question. The contract was **redeployed** at
+`0x9fD62230aA1149bf443C0a447ffe9D1b2cF4b87E` for the timing fix, because the stored panel gained a field and
+the receipt scheme moved to v2.
+
+The round-4 journey below therefore still proves what it always proved -- the
+lifecycle, weighted settlement, and that `claimed_amount == pool` -- but its
+*question* was the defective one. It is retained as settlement evidence, not
+as evidence that the question was sound. The anchored question is proven
+separately by the hosted integration run recorded further down.
 
 ### Round 4 publication and settlement
 
@@ -91,7 +135,7 @@ round-3 reserve (`0.010 GEN`); round 4 itself is fully conserved.
 | Publisher rotation is recoverable | done | two-step transfer and accept, withdrawable, zero address rejected |
 | Zero high or critical advisories | done | `npm audit` reports `found 0 vulnerabilities` on `next@16.3.3` |
 | Contract lint and schema validation | done | 28 methods (9 view, 19 write) |
-| Deterministic contract tests | done | 56 passed |
+| Deterministic contract tests | done | 61 passed |
 | Frontend tests | done | 104 passed across 8 files |
 | Hosted StudioNet journey | done | signed round-4 run against the production URL; hashes and payout proof below |
 | Continuous integration | done | `.github/workflows/reality-bridge.yml` — contract, frontend and network-hygiene jobs |
@@ -107,7 +151,7 @@ GENVMROOT=.genvmroot genvm-lint check genlayer/contracts/reality_bridge.py
   Validation passed - RealityBridge, 28 methods (9 view, 19 write)
 
 python -m pytest genlayer/tests/direct -q
-  56 passed
+  61 passed
 
 npm --prefix frontend run test
   8 test files, 104 passed
@@ -132,6 +176,27 @@ withdraws for both players. Results are recorded in the manifest under
 `verification`.
 
 ## What the automated integration proved
+
+### The anchored resolution, verified on StudioNet
+
+A full hosted journey on contract `0xaD59a13a0eB41d31F5eC2b8fc8C8558aD9b221bf`
+(2026-09-01, 187 s) ran deploy through both withdrawals, resolving a real
+panel with real validators against
+`https://blockstream.info/api/blocks/900000`:
+
+```text
+resolve_tile accepted in 31s
+tile outcome=YES reason=FINAL_EVIDENCE observed_at=1749188499
+```
+
+`1749188499` is block 900000's header timestamp, read off the page by the
+validators rather than supplied by the test. The suite recomputes the v2
+receipt from that value plus the panel's `resolution_time` and asserts it
+matches what the contract stored, so the anchoring is proven on chain and not
+merely asserted in a unit test.
+
+### Earlier runs
+
 
 A run on contract `0xeC37Bb0a63502143ec87Dc5E5174a1131e375A54` finished
 `SETTLED` with `claimed_amount == pool`, weighted claims of `1.6e16` and

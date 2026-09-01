@@ -14,7 +14,7 @@ work.
 
 | | |
 | --- | --- |
-| Contract (StudioNet, chain `61999`) | `0x4DE4c2aFC908fd744b65Fe8361FEE4Dc1C5c8CA9` |
+| Contract (StudioNet, chain `61999`) | `0x9fD62230aA1149bf443C0a447ffe9D1b2cF4b87E` |
 | Publisher account | `0xf19AA039E52fC65A23f2f98FBA15081244C32d4d` |
 | Publisher key | `genlayer/.deployer.key` — **git-ignored, local to the machine that deployed** |
 | Published round 1 | expired unjoined; retained as historical manifest data |
@@ -24,7 +24,7 @@ work.
 | Git | source, hosted status, and the round-4 evidence are committed in this repository |
 | `frontendUrl` in the manifest | `https://reality-bridge-beta.vercel.app` |
 
-Passing now: contract lint + schema (28 methods), 56 direct tests, 104 frontend
+Passing now: contract lint + schema (28 methods), 61 direct tests, 104 frontend
 tests, typecheck, lint, production build, `npm audit` clean, the hosted
 StudioNet integration journey (192 s), the public URL smoke check, and the
 signed two-wallet round-4 journey.
@@ -58,7 +58,7 @@ historical too. **Round ids 1–5 are used; start at 6.**
 **If you are on the machine that holds `genlayer/.deployer.key`:**
 
 ```bash
-python genlayer/scripts/deploy_studionet.py --contract 0x4DE4c2aFC908fd744b65Fe8361FEE4Dc1C5c8CA9 --round-id 6 --join-window 1200 --commit-window 300 --panel-window 600 --reveal-grace 120
+python genlayer/scripts/deploy_studionet.py --contract 0x9fD62230aA1149bf443C0a447ffe9D1b2cF4b87E --round-id 6 --join-window 1200 --commit-window 300 --panel-window 600 --reveal-grace 120
 ```
 
 For a demo you intend to play through in one sitting, `--quick` replaces every
@@ -66,7 +66,7 @@ window flag with a schedule that is resolvable about five and a half minutes
 after publishing:
 
 ```bash
-python genlayer/scripts/deploy_studionet.py --contract 0x4DE4c2aFC908fd744b65Fe8361FEE4Dc1C5c8CA9 --round-id 6 --quick
+python genlayer/scripts/deploy_studionet.py --contract 0x9fD62230aA1149bf443C0a447ffe9D1b2cF4b87E --round-id 6 --quick
 ```
 
 Have both wallets funded and connected first — joins close three minutes in.
@@ -81,10 +81,20 @@ That writes a new key to `genlayer/.deployer.key`. **Keep it**: it is the only
 way to author further rounds on that deployment. The manifest merges rather
 than overwrites, so an existing deployment record survives.
 
-The published question is built from the live Bitcoin tip height at publish
-time (`--block-margin`, default `+1`), so the answer genuinely does not exist
-when players commit. Do not replace it with a static fixture page; that was a
-prior defect.
+The published question asks whether a specific future block was mined at or
+before the panel's evidence instant. The target height is the live tip at
+publish time plus `--block-margin` (default `+1`), so the answer genuinely
+does not exist when players commit, and a mined block's header timestamp never
+changes, so the answer is the same whenever anyone resolves it.
+
+Two shapes of question are defects, and both have been published here before:
+
+- A static fixture page, readable before committing.
+- Anything read from a **live, moving** endpoint such as
+  `/api/blocks/tip/height`. Tip height only rises, so a "greater than N"
+  panel answers NO early and YES late, and resolution is permissionless —
+  the caller would be choosing the payout. Bind the question to a datum that
+  is fixed once it exists.
 
 `--panel-window` larger than `--commit-window` leaves slack so a forfeited
 runner hands the **same** panel to the next seat. Without it every forfeit
@@ -223,7 +233,7 @@ manifest.
 ## Full verification before submitting
 
 ```bash
-python -m pytest genlayer/tests/direct -q                 # 56 passed
+python -m pytest genlayer/tests/direct -q                 # 61 passed
 GENVMROOT=.genvmroot genvm-lint check genlayer/contracts/reality_bridge.py
 npm --prefix frontend run typecheck
 npm --prefix frontend run lint

@@ -45,6 +45,11 @@ TILE_SCHEDULE = (
     (BASE_TS + 3000, BASE_TS + 3060),
 )
 
+#: The timestamp the fixture page carries for its own observation. Distinct
+#: from every panel deadline, so a receipt that accidentally bound the wrong
+#: instant would not still match.
+OBSERVED_AT = BASE_TS + 1234
+
 SOURCE_HOST = "evidence.example.com"
 SOURCE_LABEL = "Curated evidence fixture"
 SUPPORT_HOST = "mirror.example.org"
@@ -86,10 +91,20 @@ def choice_commitment(round_id, tile_index, account, choice, salt):
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def evidence_receipt(round_id, tile_index, host, status, outcome, event_id, date):
-    canonical = "\x1f".join(
+def evidence_receipt(
+    round_id,
+    tile_index,
+    host,
+    status,
+    outcome,
+    event_id,
+    date,
+    as_of=None,
+    observed_at=None,
+):
+    canonical = "".join(
         (
-            "reality-bridge-evidence-v1",
+            "reality-bridge-evidence-v2",
             str(round_id),
             str(tile_index),
             host,
@@ -97,6 +112,8 @@ def evidence_receipt(round_id, tile_index, host, status, outcome, event_id, date
             outcome,
             event_id,
             date,
+            str(TILE_SCHEDULE[0][1] if as_of is None else as_of),
+            str(OBSERVED_AT) if observed_at is None else observed_at,
         )
     )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -185,6 +202,7 @@ def mock_evidence(
     event_id="RB-EVENT-7",
     effective_date="2035-01-01",
     body=PAGE_BODY,
+    observed_at=OBSERVED_AT,
 ):
     direct_vm.mock_web(
         rf".*{SOURCE_HOST}/panel-.*",
@@ -198,6 +216,7 @@ def mock_evidence(
                 "outcome": "NONE" if outcome == "VOID" else outcome,
                 "event_id": event_id,
                 "effective_date": effective_date,
+                "observed_at": observed_at,
             }
         ),
     )
@@ -761,6 +780,129 @@ def test_reveal_one_second_after_the_cutoff_is_rejected(
 # ---------------------------------------------------------------------------
 
 
+def test_contract_source_is_pure_ascii():
+    """A single non-ASCII byte makes the contract undeployable by the tooling.
+
+    Schema generation sends the source as ASCII, so one em dash in a docstring
+    fails every client with an opaque "failed to get schema" and no mention of
+    encoding. Cheap to assert, expensive to diagnose.
+    """
+
+    source = Path(CONTRACT).read_text(encoding="utf-8")
+    offenders = sorted({character for character in source if ord(character) > 127})
+    assert not offenders, (
+        "contract source must be ASCII-only; found "
+        + ", ".join(f"U+{ord(character):04X}" for character in offenders)
+    )
+
+
+def test_caller_timing_cannot_move_a_payout_bearing_outcome(
+    direct_vm, direct_deploy, direct_owner, direct_alice
+):
+    """The panel is answered as of its own instant, not the caller's clock.
+
+    A monotone condition - "has the chain passed height N", "has the document
+    appeared" - is false early and true later. If resolution read the world at
+    the moment it happened to run, whoever chose when to call would choose the
+    outcome, and there is money on it. The receipt must therefore commit to the
+    panel's fixed instant even when resolution runs long afterwards.
+    """
+
+    contract = deploy(direct_vm, direct_deploy, direct_owner)
+    create_open_round(contract)
+    start_with_players(direct_vm, contract, direct_owner, direct_alice)
+
+    commit_and_reveal(direct_vm, contract, direct_owner, "YES", "late-salt")
+    # Resolvable at +1860; this caller waits another seven minutes.
+    direct_vm.warp(at(2300))
+    resolve_current(direct_vm, contract, "YES")
+
+    tile = contract.get_tile(1, 0)
+    assert tile["resolved_at"] == BASE_TS + 2300
+    assert tile["resolved_at"] != tile["resolution_time"]
+    # Bound to the panel's instant...
+    assert tile["evidence_receipt"] == evidence_receipt(
+        1, 0, SOURCE_HOST, "FINAL", "YES", "RB-EVENT-7", "2035-01-01"
+    )
+    # ...and provably not to the instant the caller happened to run.
+    assert tile["evidence_receipt"] != evidence_receipt(
+        1, 0, SOURCE_HOST, "FINAL", "YES", "RB-EVENT-7", "2035-01-01",
+        as_of=tile["resolved_at"],
+    )
+
+
+def test_a_final_without_a_timestamped_observation_is_voided(
+    direct_vm, direct_deploy, direct_owner, direct_alice
+):
+    """An answer that cannot say when it was true never settles.
+
+    Without this the model could report whatever a live page showed at the
+    moment of the call and still produce a FINAL, which is the same defect by
+    another route.
+    """
+
+    contract = deploy(direct_vm, direct_deploy, direct_owner)
+    create_open_round(contract)
+    start_with_players(direct_vm, contract, direct_owner, direct_alice)
+
+    commit_and_reveal(direct_vm, contract, direct_owner, "YES", "unanchored-salt")
+    direct_vm.warp(at(1860))
+    resolve_current(direct_vm, contract, "YES", observed_at=0)
+
+    tile = contract.get_tile(1, 0)
+    player = contract.get_player_by_index(1, 0)
+    assert tile["status"] == "RESOLVED"
+    assert tile["outcome"] == "VOID"
+    assert tile["reason_code"] == "VOID_UNANCHORED"
+    assert tile["observed_at"] == ""
+    # A void panel is nobody's fault: no credit, no elimination.
+    assert player["status"] == "ACTIVE"
+    assert player["discovery_credits"] == 0
+
+
+def test_receipt_binds_the_timestamp_the_evidence_carried(
+    direct_vm, direct_deploy, direct_owner, direct_alice
+):
+    contract = deploy(direct_vm, direct_deploy, direct_owner)
+    create_open_round(contract)
+    start_with_players(direct_vm, contract, direct_owner, direct_alice)
+
+    commit_and_reveal(direct_vm, contract, direct_owner, "YES", "observed-salt")
+    direct_vm.warp(at(1860))
+    resolve_current(direct_vm, contract, "YES", observed_at=OBSERVED_AT + 60)
+
+    tile = contract.get_tile(1, 0)
+    assert tile["observed_at"] == str(OBSERVED_AT + 60)
+    assert tile["evidence_receipt"] == evidence_receipt(
+        1, 0, SOURCE_HOST, "FINAL", "YES", "RB-EVENT-7", "2035-01-01",
+        observed_at=str(OBSERVED_AT + 60),
+    )
+    # Same outcome, same fields, a different moment of observation: a receipt
+    # that ignored the timing would collide here.
+    assert tile["evidence_receipt"] != evidence_receipt(
+        1, 0, SOURCE_HOST, "FINAL", "YES", "RB-EVENT-7", "2035-01-01"
+    )
+
+
+def test_a_junk_observation_timestamp_is_refused_rather_than_stored(
+    direct_vm, direct_deploy, direct_owner, direct_alice
+):
+    contract = deploy(direct_vm, direct_deploy, direct_owner)
+    create_open_round(contract)
+    start_with_players(direct_vm, contract, direct_owner, direct_alice)
+
+    commit_and_reveal(direct_vm, contract, direct_owner, "YES", "junk-salt")
+    direct_vm.warp(at(1860))
+    # Free text where a Unix second belongs. Validators would never agree on
+    # it, so it must not reach storage as an anchor.
+    resolve_current(direct_vm, contract, "YES", observed_at="yesterday afternoon")
+
+    tile = contract.get_tile(1, 0)
+    assert tile["outcome"] == "VOID"
+    assert tile["reason_code"] == "VOID_UNANCHORED"
+    assert tile["observed_at"] == ""
+
+
 def test_correct_resolution_awards_credit_and_stores_a_receipt(
     direct_vm, direct_deploy, direct_owner, direct_alice
 ):
@@ -896,6 +1038,7 @@ def test_unresolved_model_verdict_keeps_the_panel_open(
                 "outcome": "NONE",
                 "event_id": "RB-EVENT-7",
                 "effective_date": "2035-01-01",
+                "observed_at": OBSERVED_AT,
             }
         ),
     )
@@ -991,6 +1134,7 @@ def test_contradicting_corroborating_source_voids_a_final_panel(
                 "outcome": "YES",
                 "event_id": "RB-EVENT-7",
                 "effective_date": "2035-01-01",
+                "observed_at": OBSERVED_AT,
             }
         ),
     )
@@ -1028,6 +1172,7 @@ def test_consistent_corroborating_source_keeps_the_primary_outcome(
                 "outcome": "YES",
                 "event_id": "RB-EVENT-7",
                 "effective_date": "2035-01-01",
+                "observed_at": OBSERVED_AT,
             }
         ),
     )

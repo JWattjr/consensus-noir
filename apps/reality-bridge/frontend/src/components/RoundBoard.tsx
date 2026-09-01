@@ -3,7 +3,13 @@
 import { Check, Info, LockKeyhole, Zap } from "lucide-react";
 
 import type { PlayerView, RoundView, TileView } from "@/lib/contract";
-import { formatAmount, sameAddress, shortAddress, shortHash } from "@/lib/format";
+import {
+  formatAmount,
+  formatIso,
+  sameAddress,
+  shortAddress,
+  shortHash,
+} from "@/lib/format";
 import { ExternalLinkOut, StatusPill } from "@/components/ui";
 
 const REASON_COPY: Record<string, string> = {
@@ -13,6 +19,8 @@ const REASON_COPY: Record<string, string> = {
     "A corroborating source contradicted the primary source, so the panel was voided.",
   VOID_LIVENESS:
     "No runner produced a valid sealed choice before this panel's information cut-off, so it was voided.",
+  VOID_UNANCHORED:
+    "The evidence could not say when it was true, so the panel was voided rather than settled on whichever moment resolution happened to run.",
 };
 
 /** The simulation must never borrow live-consensus vocabulary. */
@@ -23,6 +31,8 @@ const SIMULATED_REASON_COPY: Record<string, string> = {
     "The scenario's corroborating fixture disagreed with the primary one, so the panel was voided.",
   VOID_LIVENESS:
     "No sealed choice existed before this panel's cut-off, so it was voided.",
+  VOID_UNANCHORED:
+    "The scenario's evidence carried no timestamp, so the panel was voided instead of settled.",
 };
 
 function tileState(
@@ -224,6 +234,19 @@ export function EvidenceLedger({
                     <dd>{tile.effective_date}</dd>
                   </div>
                 )}
+                {tile.observed_at && (
+                  <div>
+                    {/* The instant the evidence itself carried. The receipt
+                        commits to it, so the record says when the answer was
+                        true and not merely what it was. */}
+                    <dt>Evidence observed</dt>
+                    <dd>{formatIso(Number(tile.observed_at))}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt>Answered as of</dt>
+                  <dd>{formatIso(tile.resolution_time)}</dd>
+                </div>
                 {tile.evidence_receipt && (
                   <div>
                     <dt>Receipt</dt>
