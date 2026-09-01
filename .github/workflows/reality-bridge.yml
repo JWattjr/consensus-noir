@@ -75,9 +75,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # npm 10 rejects this cross-platform lockfile's WASI-only optional
-          # packages on Linux. npm 11 resolves it consistently with Vercel and
-          # with the lockfile generator used by the project.
+          # Match the current production build runtime and lockfile generator.
           node-version: "24"
           cache: npm
           cache-dependency-path: apps/reality-bridge/frontend/package-lock.json
