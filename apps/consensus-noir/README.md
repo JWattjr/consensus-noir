@@ -1,14 +1,17 @@
 # Consensus Noir
 
-**A detective game where nobody knows the answer — not even the people who built it.**
+## A GenLayer-native adjudication and settlement protocol disguised as a detective game
 
-Every online deduction game today has a trusted server holding a secret answer key.
-You are trusting the operator not to move the goalposts and not to pay their friends.
+Consensus Noir converts ambiguous textual evidence into an economically binding game
+outcome without an operator-held answer key. It combines immutable dossier publication,
+wallet-bound commit–reveal accusations, nondeterministic validator adjudication,
+consensus-constrained result canonicalization, evidence-alignment-weighted settlement,
+and permissionless liveness recovery in one Intelligent Contract.
 
-Consensus Noir removes the answer key. A frozen case file is published, players stake
-GEN on a suspect behind a hash commitment, and when the windows close, GenLayer's
-validators independently read the same evidence and decide who did it. **The contract
-has no `set_culprit` function.** That absence is the product.
+The protocol's critical trust property is structural: **the contract has no
+`set_culprit` function and stores no hidden solution.** A culprit enters state only when
+`resolve_case` invokes GenLayer validators over the frozen public record. The same result
+fields that establish the verdict also determine who can withdraw escrow.
 
 | | |
 |---|---|
@@ -20,26 +23,42 @@ has no `set_culprit` function.** That absence is the product.
 
 ---
 
-<!-- Before final submission: add the walkthrough video link to the fact table above. -->
+## Technical thesis
 
-## Why this needs GenLayer
+Ordinary contracts can verify signatures, hashes, deadlines, and arithmetic, but they
+cannot derive a defensible verdict from contradictory natural-language testimony. A
+conventional oracle would simply move the trusted answer key off-chain. Consensus Noir
+instead uses GenLayer's independent reasoning and equivalence validation to make semantic
+adjudication part of the state transition itself.
 
-A verdict over ambiguous prose is not something an oracle can feed you or a Solidity
-`if` can compute. It needs many independent reasoners looking at the same evidence and
-agreeing on a discrete answer. That is the one thing GenLayer does that no other chain
-does, and it is the only reason this game can exist without a trusted operator.
+The Intelligent Contract is therefore load-bearing rather than decorative. Removing
+GenLayer leaves either a centralized quiz with a privileged grader or escrow with no
+computable settlement condition.
 
-The Intelligent Contract is not a feature bolted onto a dapp. Remove it and there is no
-game — only a quiz with no grader.
+The mechanism also makes reasoning economically relevant. Players commit to a suspect
+and exactly three material exhibits. Correct accusers split the pool with weight
+`1 + evidence_overlap`, where overlap is measured against the three exhibits cited by
+the validator result. A correct conclusion supported by the consensus-relevant evidence
+earns a larger share than an unsupported guess.
 
-**Payouts depend on the validators' reasoning, not just their verdict.** Players commit
-to a suspect *and the three exhibits that prove it*. Correct accusers split the pool
-weighted by `1 + (their exhibits the validators also cited)`. Naming the right suspect
-for the right reasons pays more than guessing it.
+## Evaluation map
+
+This table is the shortest path from a project claim to independently inspectable proof.
+
+| Property under review | Implementation boundary | Verification artifact |
+|---|---|---|
+| No operator answer key | `resolve_case` is the only resolution writer; no `set_culprit` method exists | [`contracts/consensus_noir.py`](contracts/consensus_noir.py), `test_open_material_is_immutable_and_no_culprit_setter` |
+| Immutable adjudication input | Publication freezes dossier fields; external sources are fetched once and content-hashed before play | `publish_case`, `test_unavailable_source_blocks_publication_not_resolution` |
+| Hidden, wallet-bound accusations | SHA-256 commitment binds domain, case, wallet, suspect, normalized theory, sorted evidence IDs, and salt | `enter_case`, `reveal_accusation`, `test_reveal_must_match_commitment_and_missed_reveal_cannot_win` |
+| Consensus-critical result scope | Validators must agree on case, outcome status, culprit, and canonical material-evidence set | `_same_stable_result`, `test_validator_rechecks_substantive_fields_and_rejects_disagreement` |
+| Exact and reason-sensitive settlement | Correct players are weighted by evidence overlap; deterministic remainder allocation conserves the complete pool | [`tests/direct/test_settlement.py`](tests/direct/test_settlement.py), production `paid_out = total_escrow` record |
+| Permissionless liveness | Anyone can advance phases, request adjudication, or open refunds after the fixed backstop | `advance_case`, `resolve_case`, `make_refundable`, cancellation/refund tests |
+| Real network execution | One production contract contains a joinable case and an independently settled end-to-end proof case | [`deployment/studionet.json`](deployment/studionet.json), `glasshouse-0217-proof`, transaction ledger below |
+| Client truthfulness | The UI distinguishes preview data, pending consensus, finalized execution, validator-agreed fields, and leader-reported metadata | [`frontend/src`](frontend/src), frontend lint/type/build commands below |
 
 ---
 
-## Reviewer walkthrough (~5 minutes)
+## Live verification path (~5 minutes)
 
 You need a browser wallet and a little StudioNet GEN. The stake is 1 GEN.
 
@@ -360,7 +379,7 @@ case turns out to be underfilled. Advancing the lifecycle, requesting the verdic
 the refund branch, claiming and refunding are all permissionless, so the game needs no
 operator after publication and no privileged party can reach the escrow.
 
-## Limitations
+## Trust boundaries and limitations
 
 - StudioNet only. GEN here is testnet-only and carries no real-world value.
 - Case creation is curator-only in this MVP. Community submission — judged by a second
