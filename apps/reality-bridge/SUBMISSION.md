@@ -95,7 +95,7 @@ round-3 reserve (`0.010 GEN`); round 4 itself is fully conserved.
 | Frontend tests | done | 104 passed across 8 files |
 | Hosted StudioNet journey | done | signed round-4 run against the production URL; hashes and payout proof below |
 | Continuous integration | done | `.github/workflows/reality-bridge.yml` — contract, frontend and network-hygiene jobs |
-| Source is versioned | done | commits `a5c6d31`, `5305d48`, `9198aab`, and `61c139e` |
+| Source is versioned | done | commits `a5c6d31`, `5305d48`, `9198aab`, `61c139e`, and `2cf5eb2` |
 | Public URL | done | production URL recorded in `deployment/studionet.json` and checked with browser automation |
 | Recorded demonstration | OUTSTANDING | the signed journey is complete; an uncut screen recording was not available in the connected browser |
 
