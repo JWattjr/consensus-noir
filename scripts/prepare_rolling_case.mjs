@@ -58,7 +58,10 @@ async function main() {
   if (!dossier) throw new Error(`Unknown dossier "${name}". Use: ${Object.keys(DOSSIERS).join(", ")}`);
 
   const seeded = SEEDED[name] ?? [];
-  const [curatorAccount, ...playerAccounts] = await resolveAccounts(keytar, { need: 1 + seeded.length });
+  // The curator also plays: seeded player 1 signs with the curator account, so
+  // this needs as many accounts as there are seeded players, not one more.
+  const accounts = await resolveAccounts(keytar, { need: Math.max(1, seeded.length) });
+  const curatorAccount = accounts[0];
 
   const now = Math.floor(Date.now() / 1000);
   const caseId = `${dossier.key}-r${now.toString(36)}`;
@@ -72,7 +75,7 @@ async function main() {
   console.log("\nPre-filling entries so a visitor is never stuck below min_players:");
   const entries = {};
   for (const [index, seed] of seeded.entries()) {
-    const player = await session(playerAccounts[index] ?? curatorAccount);
+    const player = await session(accounts[index % accounts.length]);
     const digest = commitment(caseId, player.address, seed.suspect, seed.theory, seed.picks, seed.salt);
     entries[`enter_${index + 1}`] = await send(player.client, `player ${index + 1} enters`,
       "enter_case", [caseId, digest], STAKE);
