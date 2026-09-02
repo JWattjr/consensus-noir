@@ -106,10 +106,13 @@ jobs:
         run: npm audit --audit-level=high
 
   network-hygiene:
-    name: StudioNet is the only network
+    name: Review package and StudioNet-only hygiene
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validate machine-readable review package
+        run: python genlayer/scripts/verify_submission.py --manifest-only --json
 
       # Reality Bridge targets GenLayer StudioNet (chain 61999) and nothing
       # else. Any other GenLayer network appearing in first-party code, tests

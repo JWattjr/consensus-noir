@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "name": "Reality Bridge",
+    "oneLine": "A StudioNet commitment game settled by validator consensus over timestamp-anchored public evidence.",
+    "reviewEntryPoint": "REVIEWER.md",
+    "repository": "https://github.com/JWattjr/Reality-bridge",
+    "frontend": "https://reality-bridge-beta.vercel.app"
+  },
+  "liveDeployment": {
+    "network": "GenLayer StudioNet",
+    "chainId": 61999,
+    "contractAddress": "0x9fD62230aA1149bf443C0a447ffe9D1b2cF4b87E",
+    "frontend": "https://reality-bridge-beta.vercel.app",
+    "sourceOfTruth": "deployment/studionet.json",
+    "proofRoundId": 2
+  },
+  "verification": {
+    "live": {
+      "command": "python genlayer/scripts/verify_submission.py --json",
+      "requiresNetwork": true,
+      "successExitCode": 0,
+      "resultSchemaVersion": 1
+    },
+    "offline": {
+      "command": "python genlayer/scripts/verify_submission.py --manifest-only --json",
+      "requiresNetwork": false,
+      "successExitCode": 0,
+      "resultSchemaVersion": 1
+    }
+  },
+  "claims": [
+    {
+      "id": "validator-mediated-resolution",
+      "claim": "The payout-bearing result is produced through GenLayer web retrieval and validator agreement, not supplied by the publisher or frontend.",
+      "evidence": [
+        {
+          "path": "genlayer/contracts/reality_bridge.py",
+          "locator": "resolve_tile and _resolve_tile_consensus"
+        },
+        {
+          "path": "specs/ARCHITECTURE.md",
+          "locator": "Trust boundaries and consensus resolution"
+        }
+      ],
+      "liveCheckIds": [
+        "contract_interface"
+      ]
+    },
+    {
+      "id": "timestamp-anchored-outcome",
+      "claim": "A resolver's call time cannot move round 2's outcome because the decision and receipt bind the panel instant to the evidence's own timestamp.",
+      "evidence": [
+        {
+          "path": "SECURITY.md",
+          "locator": "Caller-chosen outcomes through resolution timing"
+        },
+        {
+          "path": "SUBMISSION.md",
+          "locator": "Round 2: the fix demonstrated on chain"
+        },
+        {
+          "path": "deployment/studionet.json",
+          "locator": "rounds[1]"
+        },
+        {
+          "url": "https://blockstream.info/api/blocks/965083",
+          "locator": "block 965083 header timestamp"
+        }
+      ],
+      "liveCheckIds": [
+        "round_2_panel_1_receipt",
+        "round_2_panel_1_source_timestamp",
+        "round_2_panel_1_outcome",
+        "round_2_panel_1_caller_independence"
+      ]
+    },
+    {
+      "id": "sealed-account-bound-choice",
+      "claim": "A choice is committed before resolution and can be revealed only by its active runner with the matching account-bound salt pre-image.",
+      "evidence": [
+        {
+          "path": "genlayer/contracts/reality_bridge.py",
+          "locator": "commit_choice and reveal_choice"
+        },
+        {
+          "path": "genlayer/tests/direct/test_reality_bridge.py",
+          "locator": "test_commitment_* and test_commit_and_reveal_*"
+        }
+      ],
+      "liveCheckIds": []
+    },
+    {
+      "id": "permissionless-liveness",
+      "claim": "Any account can progress missed-commit, missed-reveal, resolution, and expiry paths; eligible players can withdraw their own claim or refund while hard deadlines prevent indefinite value lock.",
+      "evidence": [
+        {
+          "path": "genlayer/contracts/reality_bridge.py",
+          "locator": "forfeit_missed_commit, forfeit_missed_reveal, resolve_tile, expire_round, claim, refund"
+        },
+        {
+          "path": "genlayer/tests/direct/test_reality_bridge.py",
+          "locator": "liveness and terminal-boundary tests"
+        },
+        {
+          "path": "specs/ARCHITECTURE.md",
+          "locator": "State machine and recovery paths"
+        }
+      ],
+      "liveCheckIds": []
+    },
+    {
+      "id": "pool-conservation",
+      "claim": "A settled or refundable round cannot pay more than its pool, and the settled proof round has claimed_amount equal to pool.",
+      "evidence": [
+        {
+          "path": "genlayer/contracts/reality_bridge.py",
+          "locator": "_settle_round, claim, refund"
+        },
+        {
+          "path": "genlayer/tests/direct/test_reality_bridge.py",
+          "locator": "test_full_bridge_settles_weighted_claims_and_conserves_the_pool"
+        },
+        {
+          "path": "deployment/studionet.json",
+          "locator": "round 2"
+        }
+      ],
+      "liveCheckIds": [
+        "round_2_pool_conservation"
+      ]
+    },
+    {
+      "id": "client-finality-and-binding",
+      "claim": "The hosted client is bound to the reviewed contract and presents a write as successful only after a final receipt reports successful execution.",
+      "evidence": [
+        {
+          "path": "frontend/src/lib/contract.ts",
+          "locator": "LATEST_FINAL reads and transaction monitoring"
+        },
+        {
+          "path": "frontend/tests/tx.test.ts",
+          "locator": "receipt and execution-result tests"
+        }
+      ],
+      "liveCheckIds": [
+        "hosted_client_contract"
+      ]
+    },
+    {
+      "id": "studionet-only",
+      "claim": "First-party deployment, application, documentation, and CI target GenLayer StudioNet chain 61999 only.",
+      "evidence": [
+        {
+          "path": "deployment/studionet.json",
+          "locator": "network, networkKey, chainId, rpc"
+        },
+        {
+          "path": "frontend/tests/app.test.tsx",
+          "locator": "network identity and unsupported-chain assertions"
+        }
+      ],
+      "liveCheckIds": [
+        "studionet_only"
+      ]
+    }
+  ],
+  "readingOrder": [
+    "REVIEWER.md",
+    "submission/review-manifest.json",
+    "genlayer/scripts/verify_submission.py",
+    "genlayer/contracts/reality_bridge.py",
+    "specs/ARCHITECTURE.md",
+    "SECURITY.md",
+    "KNOWN_LIMITATIONS.md",
+    "SUBMISSION.md"
+  ],
+  "knownLimitations": "KNOWN_LIMITATIONS.md"
+}

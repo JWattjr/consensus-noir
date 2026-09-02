@@ -1,7 +1,8 @@
 # Reality Bridge — operator runbook
 
 Everything needed to run, republish, and re-verify this deployment. For what
-the submission claims and the evidence behind it, read
+the submission claims and the shortest evidence path, start at
+[`REVIEWER.md`](REVIEWER.md). The full record is in
 [`SUBMISSION.md`](SUBMISSION.md). For the security model, read
 [`SECURITY.md`](SECURITY.md).
 
@@ -25,14 +26,16 @@ because the stored panel gained a field and the receipt scheme moved to v2.
 ## Verify the whole submission in one command
 
 ```bash
-python genlayer/scripts/verify_submission.py
+python genlayer/scripts/verify_submission.py --json
 ```
 
 It trusts nothing in this repository's prose. It reads the deployed contract
 from StudioNet, re-fetches each panel's evidence from the public source,
 recomputes every stored receipt from the documented pre-image, and checks that
 each outcome follows from the evidence's own timestamp rather than from when
-resolution happened to run. Exit status is 0 only if every check passes.
+resolution happened to run. The output has stable check IDs for machine
+inspection; exit status is 0 only if every check passes. Add `--manifest-only`
+for an offline structural check, or omit `--json` for human-readable output.
 
 ## Offline checks
 
@@ -74,7 +77,7 @@ That writes a new key to `genlayer/.deployer.key`. **Keep it**: it is the only
 way to author further rounds on that deployment. The manifest merges rather
 than overwrites, so existing records survive.
 
-`--quick` publishes a demo-paced round (joins close in 3 minutes, resolvable
+`--quick` publishes a fast lifecycle round (joins close in 3 minutes, resolvable
 at about 5.5). Any window flag you pass explicitly still wins.
 
 ### Choosing `--block-margin`

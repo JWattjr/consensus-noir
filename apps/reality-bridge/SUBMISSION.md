@@ -16,7 +16,8 @@ from a command. Where something is unverified, it says so.
 | Deployment transaction | `0x88d553046d34a8bb7aee59b36b047231746d61c98c8a85e42ad9f3c5ef4ae881` |
 | Published round | `1` on the corrected contract — one panel, entry `0.01 GEN` |
 | Frontend URL | [reality-bridge-beta.vercel.app](https://reality-bridge-beta.vercel.app) — production, verified |
-| Independent verification | `python genlayer/scripts/verify_submission.py` — 12/12 against the live chain, source data and hosted client |
+| Independent verification | `python genlayer/scripts/verify_submission.py --json` — all checks pass against the review manifest, live chain, source data, and hosted client |
+| Machine-readable review map | [`submission/review-manifest.json`](submission/review-manifest.json) — stable claim IDs, artifact paths, and live-check IDs |
 
 Per-transaction hashes, deadlines and the panel threshold are in the manifest.
 Do not assume a round listed there is still joinable: rounds carry real
@@ -38,7 +39,7 @@ timestamp is fixed when it is found and never changes, so this panel returns
 the same answer whoever asks and whenever they ask.
 
 Two earlier versions of this question were defective, and both are worth
-recording because the second is subtle:
+retaining in the audit history because the second is subtle:
 
 1. A static fixture page whose answer was readable before committing. That
    exercised the consensus plumbing but not the product.
@@ -289,19 +290,21 @@ independently checked below against the corrected contract address.
 
 ## How to check this submission without trusting it
 
-Every factual claim here is re-derivable from public data. One command:
+The deployment, proof-round, receipt, evidence, outcome, and hosted-client
+claims are re-derivable from public data. One command:
 
 ```bash
-python genlayer/scripts/verify_submission.py
+python genlayer/scripts/verify_submission.py --json
 ```
 
 It reads the deployed contract from StudioNet, re-fetches each resolved
 panel's evidence from its public source, recomputes each stored receipt from
 the pre-image documented in [`specs/PRODUCT_SPEC.md`](specs/PRODUCT_SPEC.md),
 and re-derives each outcome from the evidence's own timestamp against the
-panel's instant. It reports `PASS`/`FAIL` per check and exits non-zero on any
-failure. Nothing in it reads a stored copy of an answer and compares it to
-itself.
+panel's instant. Its JSON result carries stable check IDs and evidence for
+automated inspection, and it exits non-zero on any failure. Omit `--json` for
+the equivalent human-readable `PASS`/`FAIL` report. Nothing in it reads a
+stored copy of an answer and compares it to itself.
 
 Current result, against the live deployment:
 
@@ -316,29 +319,26 @@ PASS  round 2 panel 1: stored timestamp matches the live source
 PASS  round 2 panel 1: outcome follows the evidence, not the caller
 PASS  round 2 panel 1: resolution ran after the block existed
 PASS  hosted client serves the contract this repository documents
-12/12 checks passed
+all checks passed; summary.allPassed = true
 ```
 
 The hosted-client check reads the deployed JavaScript bundle and requires it to
 contain the same corrected contract address documented by the manifest. It
 therefore cannot be satisfied by editing this file.
 
-A reviewer who prefers to play rather than read can use the latest public round
-while its on-chain join window is open; the hosted client shows that live state
-and [`HANDOFF.md`](HANDOFF.md) gives the fresh-round command. A reviewer who
-prefers to read code should start with the reading list below.
-
-**Not provided:** a screen recording. The evidence above is reproducible from
-a command; a video is not, and would be weaker for anything a reviewer wants
-to confirm independently. Every on-chain artifact cited here can be checked
-against StudioNet and Blockstream directly.
+A hands-on check can use a fresh public round while its on-chain join window is
+open; the hosted client shows that live state and [`HANDOFF.md`](HANDOFF.md)
+gives the fresh-round command. This is optional: the submission record is the
+machine-readable claim map plus reproducible repository, StudioNet,
+Blockstream, and hosted-bundle evidence.
 
 ## Reading list for a reviewer
 
-0. [`genlayer/scripts/verify_submission.py`](genlayer/scripts/verify_submission.py) — run this first; it re-derives every claim below from live data.
-1. [`specs/PRODUCT_SPEC.md`](specs/PRODUCT_SPEC.md) — rules and economics.
-2. [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md) — consensus boundary and invariants.
-3. [`SECURITY.md`](SECURITY.md) — threat model.
-4. [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md) — what this does not do.
-5. [`QA.md`](QA.md) — hands-on testing, including the wallet steps.
-6. [`DEMO.md`](DEMO.md) — a narrated walkthrough of one full round.
+0. [`REVIEWER.md`](REVIEWER.md) — canonical short review path and strongest proof.
+1. [`submission/review-manifest.json`](submission/review-manifest.json) — stable claim-to-evidence map.
+2. [`genlayer/scripts/verify_submission.py`](genlayer/scripts/verify_submission.py) — executable falsification path.
+3. [`specs/PRODUCT_SPEC.md`](specs/PRODUCT_SPEC.md) — rules and economics.
+4. [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md) — consensus boundary and invariants.
+5. [`SECURITY.md`](SECURITY.md) — threat model.
+6. [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md) — what this does not do.
+7. [`QA.md`](QA.md) and [`DEMO.md`](DEMO.md) — optional hands-on procedures.

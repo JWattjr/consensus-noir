@@ -59,7 +59,8 @@ receipt scheme changed.
 | Contract | `0x9fD62230aA1149bf443C0a447ffe9D1b2cF4b87E` (StudioNet, chain 61999) |
 | Deployment transaction | `0x88d553046d34a8bb7aee59b36b047231746d61c98c8a85e42ad9f3c5ef4ae881` |
 | Hosted client | [reality-bridge-beta.vercel.app](https://reality-bridge-beta.vercel.app) — serves the corrected contract |
-| Independent verifier | `python genlayer/scripts/verify_submission.py` — **12/12 checks passed** against live StudioNet state, Blockstream evidence and the hosted bundle |
+| Independent verifier | `python genlayer/scripts/verify_submission.py --json` — **all checks pass** against the review manifest, live StudioNet state, Blockstream evidence, and the hosted bundle |
+| Review map | [`submission/review-manifest.json`](submission/review-manifest.json) — machine-readable claim IDs linked to artifacts and verifier checks |
 
 **Demonstrated on chain, round 2 on that contract.** The target block landed
 just late, which makes the round a direct proof rather than an assertion:

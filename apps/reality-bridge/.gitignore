@@ -3,6 +3,8 @@
 
 # Dependencies and test/build scratch are local only.
 node_modules/
+__pycache__/
+*.py[cod]
 
 # GenLayer test tooling scratch space.
 genlayer/.pytest_cache/
@@ -16,6 +18,7 @@ genlayer/.deployer.key
 .env
 .env.local
 .env.*.local
+frontend/next-env.d.ts
 
 # Wallet recovery bundles contain reveal salts and must stay local.
 .recovery/

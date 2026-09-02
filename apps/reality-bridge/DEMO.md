@@ -1,8 +1,11 @@
-# Reality Bridge — walkthrough of one full round
+# Reality Bridge — optional hands-on verification walkthrough
 
-One continuous take, no cuts, no edits. Everything below runs against **GenLayer
-StudioNet** (chain id `61999`). Total wall time is about 12 minutes if you use
-the pre-published round, or about 6 minutes if you run the scripted journey.
+This is a repeatable operator walkthrough, not required submission evidence.
+Everything below runs against **GenLayer StudioNet** (chain id `61999`). Total
+wall time is about 12 minutes if you use a fresh published round, or about 6
+minutes if you run the scripted journey. The canonical review path is
+[`REVIEWER.md`](REVIEWER.md), and every factual claim has an executable or
+on-chain verification path.
 
 Have ready:
 
@@ -37,7 +40,7 @@ the contract's first line.
 python -m pytest genlayer/tests/direct -q
 ```
 
-56 tests, about 3 seconds. While it runs, call out the three that matter most:
+61 tests, about 3 seconds. While it runs, inspect the three that matter most:
 
 - `test_missed_reveal_hands_the_same_panel_to_the_next_runner` — the liveness
   bug that made the old build unplayable.
@@ -177,8 +180,7 @@ The finalized claim transactions paid `0.016 GEN` to wallet 1 and `0.004 GEN`
 to wallet 2. The complete transaction list and hashes are in
 [`SUBMISSION.md`](SUBMISSION.md) and `deployment/studionet.json`.
 
-This section is an on-chain evidence record, not a video: the connected browser
-surface did not expose a recorder. No screen recording is provided: the
-evidence for every claim is reproducible from
-`python genlayer/scripts/verify_submission.py`, which re-derives it from live
-chain and source data rather than showing it.
+This section is a historical on-chain evidence record. The current submission
+evidence is reproduced with `python genlayer/scripts/verify_submission.py
+--json`, which re-derives it from live chain and source data rather than asking
+a reviewer to trust a presentation.

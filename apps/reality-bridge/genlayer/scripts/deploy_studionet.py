@@ -102,7 +102,7 @@ DEFAULT_BLOCK_MARGIN = 1
 FIXTURE_HOST = "test-server.genlayer.com"
 FIXTURE_LABEL = "GenLayer public test fixture server"
 
-# A demo-paced schedule: publish to resolvable in about five and a half
+# A fast lifecycle schedule: publish to resolvable in about five and a half
 # minutes, which is short enough to play in one sitting. Every value clears the
 # contract's minimums (60s commit window, 30s reveal grace) and leaves the
 # panel window wider than the commit window so a forfeit hands the panel on
@@ -239,7 +239,7 @@ def main() -> int:
         "--quick",
         action="store_true",
         help=(
-            "Demo-paced schedule: joins close in 3 minutes and the panel is "
+            "Fast lifecycle schedule: joins close in 3 minutes and the panel is "
             "resolvable about 5.5 minutes after publishing. Individual window "
             "flags still override it."
         ),

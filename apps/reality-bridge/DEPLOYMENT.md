@@ -92,7 +92,7 @@ Useful flags:
 - `--contract 0x…` — publish onto an existing deployment instead of deploying a
   new one. Requires the publisher key that owns that contract.
 - `--skip-round` — deploy and register sources only.
-- `--quick` — a demo-paced schedule: joins close in 3 minutes and the panel is
+- `--quick` — a fast lifecycle schedule: joins close in 3 minutes and the panel is
   resolvable about 5.5 minutes after publishing. Every value clears the
   contract's minimums, and the panel window stays wider than the commit window
   so a forfeit hands the panel on rather than voiding it. Individual window

@@ -6,6 +6,10 @@ Reality Bridge turns a glass-bridge elimination mechanic into a protocol about i
 
 The application is intentionally small enough to inspect, but it is not a frontend wrapper around a centralized oracle. The contract owns the round, the participant order, commitment validity, validator-resolution request, settlement, payout accounting and every recovery path. The web client is a strictly non-authoritative interpreter of final contract state.
 
+**Start a review at [`REVIEWER.md`](REVIEWER.md).** It is the canonical short
+entrypoint. [`submission/review-manifest.json`](submission/review-manifest.json)
+expresses the same claims and evidence links in a stable machine-readable form.
+
 ## Submission surface
 
 | Item | Verified value |
@@ -21,14 +25,14 @@ The application is intentionally small enough to inspect, but it is not a fronte
 ### Check it without trusting it
 
 ```bash
-python genlayer/scripts/verify_submission.py
+python genlayer/scripts/verify_submission.py --json
 ```
 
-Reads the deployed contract from StudioNet, re-fetches each resolved panel's evidence from its public source, recomputes every stored receipt from the pre-image documented in [`specs/PRODUCT_SPEC.md`](specs/PRODUCT_SPEC.md), and re-derives each outcome from the evidence's own timestamp. `PASS`/`FAIL` per check, non-zero exit on any failure. It reads no stored answer and compares it to itself, and it reads the hosted client's deployed JavaScript rather than trusting this file. The current live result is **12/12 checks passed**, including the production bundle-to-contract check.
+Reads the deployed contract from StudioNet, re-fetches each resolved panel's evidence from its public source, recomputes every stored receipt from the pre-image documented in [`specs/PRODUCT_SPEC.md`](specs/PRODUCT_SPEC.md), and re-derives each outcome from the evidence's own timestamp. The JSON result carries stable check IDs, evidence, and a summary; the process exits non-zero on any failure. It reads no stored answer and compares it to itself, and it reads the hosted client's deployed JavaScript rather than trusting this file. Omit `--json` for a concise `PASS`/`FAIL` report. Use `--manifest-only --json` for an offline review-package check with no GenLayer dependency.
 
 Round 2 is worth looking at closely, because the target block landed 42 seconds *after* the panel's instant. Resolution ran later still, when the live chain tip had already passed the target — so an implementation that read the current tip would have answered `YES`. This one compares the block's own header timestamp against the panel's instant and answers `NO`. That margin is the difference between a panel whose outcome depends on when someone calls it and one whose outcome does not. See *Caller-chosen outcomes through resolution timing* in [`SECURITY.md`](SECURITY.md).
 
-The complete transaction trail, exact deadlines and payout proof are in [`SUBMISSION.md`](SUBMISSION.md). This repository targets StudioNet exclusively; all currency and assets are test assets with no real-world value. No screen recording is provided — the evidence is reproducible from the command above instead.
+The complete transaction trail, exact deadlines and payout proof are in [`SUBMISSION.md`](SUBMISSION.md). This repository targets StudioNet exclusively; all currency and assets are test assets with no real-world value. Submission claims are grounded in executable, on-chain, source, and hosted-bundle evidence.
 
 ## Why this needs GenLayer
 
@@ -108,18 +112,27 @@ The Next.js client is deliberately defensive around an eventually settled networ
 - **Purposeful practice mode.** The offline simulator has a scripted clock and fixed outcomes, is entered only through an explicit action, and is never a fallback for a StudioNet failure.
 - **Network gate.** Every write is gated on a connected wallet being on StudioNet, with an actionable explanation for unavailable operations.
 
-These choices make the client easier to trust during a demo: it represents protocol state rather than inventing a smoother but inaccurate local story.
+These choices make the client easier to trust during review and operation: it represents protocol state rather than inventing a smoother but inaccurate local story.
 
-## Verified two-wallet result
+## Verified on-chain result
 
-The published round asks a genuinely future-resolving question: whether a specific Bitcoin block - one above the tip at publish time, so it does not exist yet - was mined at or before the panel's evidence instant. At commit time the answer does not yet exist, and because a mined block's header timestamp never changes, the answer is the same whoever resolves it and whenever they do. An earlier version of this question read the *current* tip height, which let a late caller flip the outcome; see SECURITY.md.
+Round 2 on the reviewed contract asks a genuinely future-resolving question:
+whether Bitcoin block `965083` — still unmined when published — was mined at
+or before `2026-09-01T20:52:11Z`. A mined block's header timestamp does not
+change, so the answer is independent of who resolves it and when they call.
+An earlier contract read the moving *current* tip instead; that defect and its
+replacement are documented in [`SECURITY.md`](SECURITY.md).
 
-| Account | Protocol role | Final result |
-| --- | --- | --- |
-| `0x1eE3…6199` | first runner | joined, committed/revealed `YES`, claimed `0.016 GEN` with one discovery credit |
-| `0x9A8C…BaF0` | passive survivor | joined, permissionlessly started/resolved, claimed `0.004 GEN` |
-
-The round settled `YES` by `FINAL_EVIDENCE`; its `0.020 GEN` pool was fully claimed. The complete ordered transaction hashes, final readback and conservation check are in [`SUBMISSION.md`](SUBMISSION.md) and [`deployment/studionet.json`](deployment/studionet.json).
+Two funded wallets joined. The active runner committed and revealed `YES`.
+Block `965083` arrived 42 seconds after the fixed panel instant, so validator
+consensus stored `NO` and eliminated that runner. The surviving seat claimed
+the entire `0.020 GEN` pool; the final read has `claimed_amount == pool`.
+Receipt
+`d0530d271059263a7f575f02515a283fa96e629c1946609e74e80eded80a140f`
+binds the question, evidence host, outcome, panel instant, and observed block
+timestamp. The verifier independently re-fetches the source and recomputes
+that receipt. Ordered transaction hashes and final readback are in
+[`SUBMISSION.md`](SUBMISSION.md).
 
 ## Repository map
 
@@ -138,9 +151,11 @@ reality-bridge/
 │   ├── PRODUCT_SPEC.md             # rules, economics and failure handling
 │   └── ARCHITECTURE.md             # trust boundary and system invariants
 ├── deployment/studionet.json       # contract, runner and verification manifest
+├── submission/review-manifest.json # machine-readable claims and evidence map
+├── REVIEWER.md                     # canonical review entrypoint
 ├── SECURITY.md                     # threat model and mitigations
 ├── QA.md                           # hands-on StudioNet verification procedure
-└── DEMO.md                         # narrated walkthrough of one round
+└── DEMO.md                         # optional hands-on walkthrough
 ```
 
 ## Verification
@@ -160,14 +175,14 @@ npm --prefix frontend run build
 
 For the consensus integration procedure and the manual wallet journey, use [`QA.md`](QA.md). The contract runner hash is intentionally pinned; do not replace it while preparing a submission.
 
-## Reviewer reading order
+## Review reading order
 
-1. [`SUBMISSION.md`](SUBMISSION.md) for live artifacts and honest completion status.
-2. [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md) for the consensus boundary.
-3. [`specs/PRODUCT_SPEC.md`](specs/PRODUCT_SPEC.md) for economics and lifecycle rules.
-4. [`SECURITY.md`](SECURITY.md) for the threat model.
-5. [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md) for explicit non-goals and remaining limits.
-6. [`QA.md`](QA.md) and [`DEMO.md`](DEMO.md) for hands-on verification.
+1. [`REVIEWER.md`](REVIEWER.md) for the bounded review path and strongest proof.
+2. [`submission/review-manifest.json`](submission/review-manifest.json) for stable claim and evidence IDs.
+3. [`genlayer/scripts/verify_submission.py`](genlayer/scripts/verify_submission.py) to independently re-derive live claims.
+4. [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md) for the consensus boundary.
+5. [`SECURITY.md`](SECURITY.md) and [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md) for threats and explicit limits.
+6. [`SUBMISSION.md`](SUBMISSION.md) for the complete transaction and test record.
 
 ## Contribution constraints
 
