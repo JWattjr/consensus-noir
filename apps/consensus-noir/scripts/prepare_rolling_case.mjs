@@ -11,8 +11,9 @@
  * case to the contract's case list, so don't run it more often than you need.
  *
  * Usage:
- *   node scripts/prepare_rolling_case.mjs               # pressroom dossier
- *   node scripts/prepare_rolling_case.mjs glasshouse
+ *   node scripts/prepare_rolling_case.mjs                          # pressroom, rolling
+ *   node scripts/prepare_rolling_case.mjs glasshouse rolling
+ *   node scripts/prepare_rolling_case.mjs pressroom evergreen      # open for 6 months
  */
 import crypto from "node:crypto";
 import { DOSSIERS, createArgs } from "../deploy/dossiers.js";
@@ -24,9 +25,25 @@ const { createClient, createAccount, studionet, keytar } = loadSdk();
 const DOMAIN = "consensus-noir-accusation-v1";
 const STAKE = 1000000000000000000n;
 
-// Long enough for a visitor to read the dossier and commit, short enough that
-// the whole cycle finishes inside about half an hour.
-const WINDOWS = { accusation: 1200, reveal: 1800, resolution: 1980, refund: 10800 };
+const DAY = 86400;
+
+const WINDOW_PRESETS = {
+  // Long enough for a visitor to read the dossier and commit, short enough that
+  // the whole cycle finishes inside about half an hour.
+  rolling: { accusation: 1200, reveal: 1800, resolution: 1980, refund: 10800 },
+
+  // Stays joinable for six months, so a reviewer arriving late still finds an
+  // open case. The trade-off is real and unavoidable: entries do not close
+  // until the window does, so nobody who stakes here sees a verdict until then,
+  // and their stake stays escrowed meanwhile. Use this for discovery and a
+  // rolling case for anyone who wants to actually play a case through.
+  evergreen: {
+    accusation: 180 * DAY,
+    reveal: 182 * DAY,
+    resolution: 182 * DAY + 3600,
+    refund: 200 * DAY,
+  },
+};
 
 const sha256 = (v) => crypto.createHash("sha256").update(v, "utf8").digest("hex");
 const normalize = (t) => t.normalize("NFKC").trim().split(/\s+/u).join(" ");
@@ -57,6 +74,12 @@ async function main() {
   const dossier = DOSSIERS[name];
   if (!dossier) throw new Error(`Unknown dossier "${name}". Use: ${Object.keys(DOSSIERS).join(", ")}`);
 
+  const presetName = (process.argv[3] ?? "rolling").toLowerCase();
+  const WINDOWS = WINDOW_PRESETS[presetName];
+  if (!WINDOWS) {
+    throw new Error(`Unknown window preset "${presetName}". Use: ${Object.keys(WINDOW_PRESETS).join(", ")}`);
+  }
+
   const seeded = SEEDED[name] ?? [];
   // The curator also plays: seeded player 1 signs with the curator account, so
   // this needs as many accounts as there are seeded players, not one more.
@@ -64,7 +87,7 @@ async function main() {
   const curatorAccount = accounts[0];
 
   const now = Math.floor(Date.now() / 1000);
-  const caseId = `${dossier.key}-r${now.toString(36)}`;
+  const caseId = `${dossier.key}-${presetName === "evergreen" ? "e" : "r"}${now.toString(36)}`;
   const curator = await session(curatorAccount);
 
   console.log(`Seeding ${caseId} — "${dossier.title}"\n`);
@@ -82,7 +105,7 @@ async function main() {
   }
 
   const record = {
-    caseId, dossier: name, contractAddress: CONTRACT,
+    caseId, dossier: name, preset: presetName, contractAddress: CONTRACT,
     createTransaction, publishTransaction, entries,
     accusationDeadline: now + WINDOWS.accusation,
     revealDeadline: now + WINDOWS.reveal,
@@ -94,12 +117,22 @@ async function main() {
   console.log(`\n  entries close    ${clock(record.accusationDeadline)}`);
   console.log(`  reveal closes    ${clock(record.revealDeadline)}`);
   console.log(`  verdict from     ${clock(record.resolutionEligibilityTime)}`);
-  console.log(`\n  A visitor can complete the full loop in about 30 minutes from now.`);
-  console.log(`\n  Then, in order:`);
-  console.log(`    node scripts/reveal_seeded.mjs ${caseId} ${name}`);
-  console.log(`    node scripts/finish_rolling_case.mjs ${caseId}`);
-  console.log(`\n  The second one matters. A rolling case nobody finishes stalls with`);
-  console.log(`  escrow locked, and past its refund deadline it can never reach a verdict.\n`);
+  if (presetName === "evergreen") {
+    console.log(`\n  This case stays joinable for six months, so a late reviewer still finds`);
+    console.log(`  one open. It cannot be played through in a sitting: entries do not close`);
+    console.log(`  until the window does, so seed a rolling case for anyone who wants to`);
+    console.log(`  reach a verdict now.`);
+    console.log(`\n  When the window finally turns, close it out with:`);
+    console.log(`    node scripts/reveal_seeded.mjs ${caseId} ${name}`);
+    console.log(`    node scripts/finish_rolling_case.mjs ${caseId}\n`);
+  } else {
+    console.log(`\n  A visitor can complete the full loop in about 30 minutes from now.`);
+    console.log(`\n  Then, in order:`);
+    console.log(`    node scripts/reveal_seeded.mjs ${caseId} ${name}`);
+    console.log(`    node scripts/finish_rolling_case.mjs ${caseId}`);
+    console.log(`\n  The second one matters. A rolling case nobody finishes stalls with`);
+    console.log(`  escrow locked, and past its refund deadline it can never reach a verdict.\n`);
+  }
   console.log("CONSENSUS_NOIR_ROLLING_RESULT=" + JSON.stringify(record));
 }
 
