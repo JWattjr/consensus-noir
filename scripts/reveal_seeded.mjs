@@ -11,15 +11,11 @@
  * Usage:
  *   node scripts/reveal_seeded.mjs <caseId> [dossier]
  */
-import { createRequire } from "node:module";
 
-const CLI_MODULES = "C:/Users/User/AppData/Roaming/npm/node_modules/genlayer/node_modules";
-const require = createRequire(import.meta.url);
-const keytar = require(`${CLI_MODULES}/keytar`);
-const { createClient, createAccount } = require(`${CLI_MODULES}/genlayer-js/dist/index.js`);
-const { studionet } = require(`${CLI_MODULES}/genlayer-js/dist/chains/index.js`);
+import { contractAddress, loadSdk, resolveAccounts, privateKeyFor } from "./lib/genlayer-env.mjs";
 
-const CONTRACT = "0x3133B01d4EB7e1022913dF5fb1219cAE77D3f4a6";
+const CONTRACT = contractAddress();
+const { createClient, createAccount, studionet, keytar } = loadSdk();
 const normalize = (t) => t.normalize("NFKC").trim().split(/\s+/u).join(" ");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -32,11 +28,10 @@ async function main() {
   const players = SEEDED[name];
   if (!players) throw new Error(`Unknown dossier "${name}".`);
 
+  const accounts = await resolveAccounts(keytar, { need: players.length });
   const sessions = [];
-  for (const player of players) {
-    const key = await keytar.getPassword("genlayer-cli", `account:${player.keychain}`);
-    if (!key) throw new Error(`No unlocked keychain entry for "${player.keychain}".`);
-    const account = createAccount(key.startsWith("0x") ? key : `0x${key}`);
+  for (const [index, player] of players.entries()) {
+    const account = createAccount(await privateKeyFor(keytar, accounts[index]));
     sessions.push({ ...player, client: createClient({ chain: studionet, account }) });
   }
 

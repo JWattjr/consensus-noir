@@ -13,7 +13,9 @@
  *   node deploy/02_seed_reviewer_cases.js proof
  */
 
-const CONTRACT = "0x3133B01d4EB7e1022913dF5fb1219cAE77D3f4a6";
+import { contractAddress } from "../scripts/lib/genlayer-env.mjs";
+
+const CONTRACT = contractAddress();
 
 const SUSPECTS = [
   { id: "SUSPECT-A", name: "Mara Voss", profile: "Night curator" },

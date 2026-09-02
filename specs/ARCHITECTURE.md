@@ -26,13 +26,35 @@ permissionless resolve ──> leader analysis + independent validator analysis
 
 ### Frontend (non-authoritative)
 
-- Discovery, dossier presentation, countdowns, salt generation, encrypted/local
+- Discovery, dossier presentation, countdowns, salt derivation, plaintext local
   salt backup, and wallet prompts.
 - Reads canonical case and settlement state from the contract through GenLayerJS.
 - May use an indexer later for discovery, but never supplies a culprit or payout
   result to a write call.
-- Stores a short-lived local draft salt only after explicitly warning that loss
-  prevents a valid reveal. It never stores a private key or claims custody.
+- Stores the draft reveal secret only after explicitly warning that loss
+  prevents a valid reveal. It never stores a wallet private key or claims custody.
+
+#### Reveal-secret handling
+
+The reveal secret is a commitment nonce, not key material: it cannot move funds,
+sign anything, or authorise a transaction. It only unseals one accusation, from
+the wallet that made it.
+
+It is held in two places, **both plaintext**, and neither is encrypted:
+
+- `localStorage`, under a key scoped to the case and wallet.
+- An optional downloaded JSON file.
+
+Anyone holding either can reveal that accusation from that wallet. They cannot
+claim the payout, which the contract always sends to `gl.message.sender_address`,
+so the realistic loss is a griefed reveal rather than stolen funds.
+
+Two things reduce the blast radius. The secret is derived deterministically from
+a wallet signature over `(domain, case_id, wallet)`, so it can be regenerated on
+any device holding the wallet and the file is a convenience rather than the only
+copy. And an imported backup is rejected unless its contents recompute to the
+commitment recorded on chain, so a corrupted or edited file fails at import
+instead of at reveal time, when the stake is already committed.
 
 ### Consensus Noir Intelligent Contract (authoritative)
 

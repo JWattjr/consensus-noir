@@ -72,7 +72,7 @@ You need a browser wallet and a little StudioNet GEN. The stake is 1 GEN.
    evidence board. Everything the validators will read, and nothing more.
 4. **Make an accusation.** Pick a suspect, pick exactly three exhibits, write a theory
    (300–2,000 bytes), then press **Create key** — this signs a message (no funds, no
-   transaction) that deterministically derives your reveal key, so you can regenerate
+   transaction) that deterministically derives your reveal secret, so you can regenerate
    it on any device with the same wallet. Read the stake summary, then stake.
 5. **Watch the lifecycle.** The status stays neutral through `PENDING → ACCEPTED` and
    only turns green at `FINALIZED`. Payouts are emitted `on="finalized"`, so this is
@@ -384,6 +384,11 @@ operator after publication and no privileged party can reach the escrow.
   Intelligent Contract call on *structure only*, never the solution — is the intended
   next step.
 - There is no protocol fee. The entire pool goes to players.
-- Reveal keys are derived from a wallet signature and can be regenerated on any device,
-  with a downloadable backup and an import path as a fallback. If you lose both and
-  cannot sign with the same wallet, the reveal is impossible and the stake is forfeit.
+- The reveal secret is a commitment nonce, not key material — it cannot move funds or
+  sign anything, and the contract always pays `gl.message.sender_address`. It is stored
+  in plaintext in `localStorage` and, optionally, a downloaded JSON file; anyone holding
+  either can reveal that one accusation from that wallet. It is derived from a wallet
+  signature, so it can be regenerated on any device holding the wallet, and imported
+  backups are rejected unless they recompute to the on-chain commitment. If you lose
+  every copy and cannot sign with the same wallet, the reveal is impossible and the
+  stake is forfeit.

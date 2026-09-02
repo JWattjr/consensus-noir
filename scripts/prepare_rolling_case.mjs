@@ -14,18 +14,13 @@
  *   node scripts/prepare_rolling_case.mjs               # pressroom dossier
  *   node scripts/prepare_rolling_case.mjs glasshouse
  */
-import { createRequire } from "node:module";
 import crypto from "node:crypto";
 import { DOSSIERS, createArgs } from "../deploy/dossiers.js";
 import { SEEDED } from "./seeded-players.mjs";
+import { contractAddress, loadSdk, resolveAccounts, privateKeyFor } from "./lib/genlayer-env.mjs";
 
-const CLI_MODULES = "C:/Users/User/AppData/Roaming/npm/node_modules/genlayer/node_modules";
-const require = createRequire(import.meta.url);
-const keytar = require(`${CLI_MODULES}/keytar`);
-const { createClient, createAccount } = require(`${CLI_MODULES}/genlayer-js/dist/index.js`);
-const { studionet } = require(`${CLI_MODULES}/genlayer-js/dist/chains/index.js`);
-
-const CONTRACT = "0x3133B01d4EB7e1022913dF5fb1219cAE77D3f4a6";
+const CONTRACT = contractAddress();
+const { createClient, createAccount, studionet, keytar } = loadSdk();
 const DOMAIN = "consensus-noir-accusation-v1";
 const STAKE = 1000000000000000000n;
 
@@ -44,10 +39,8 @@ function commitment(caseId, player, suspectId, theory, picks, salt) {
   );
 }
 
-async function session(keychain) {
-  const key = await keytar.getPassword("genlayer-cli", `account:${keychain}`);
-  if (!key) throw new Error(`No unlocked keychain entry for "${keychain}".`);
-  const account = createAccount(key.startsWith("0x") ? key : `0x${key}`);
+async function session(accountName) {
+  const account = createAccount(await privateKeyFor(keytar, accountName));
   return { client: createClient({ chain: studionet, account }), address: account.address };
 }
 
@@ -64,9 +57,12 @@ async function main() {
   const dossier = DOSSIERS[name];
   if (!dossier) throw new Error(`Unknown dossier "${name}". Use: ${Object.keys(DOSSIERS).join(", ")}`);
 
+  const seeded = SEEDED[name] ?? [];
+  const [curatorAccount, ...playerAccounts] = await resolveAccounts(keytar, { need: 1 + seeded.length });
+
   const now = Math.floor(Date.now() / 1000);
   const caseId = `${dossier.key}-r${now.toString(36)}`;
-  const curator = await session("moment-grid-studionet");
+  const curator = await session(curatorAccount);
 
   console.log(`Seeding ${caseId} — "${dossier.title}"\n`);
   const createTransaction = await send(curator.client, "create_case", "create_case",
@@ -75,8 +71,8 @@ async function main() {
 
   console.log("\nPre-filling entries so a visitor is never stuck below min_players:");
   const entries = {};
-  for (const [index, seed] of (SEEDED[name] ?? []).entries()) {
-    const player = await session(seed.keychain);
+  for (const [index, seed] of seeded.entries()) {
+    const player = await session(playerAccounts[index] ?? curatorAccount);
     const digest = commitment(caseId, player.address, seed.suspect, seed.theory, seed.picks, seed.salt);
     entries[`enter_${index + 1}`] = await send(player.client, `player ${index + 1} enters`,
       "enter_case", [caseId, digest], STAKE);

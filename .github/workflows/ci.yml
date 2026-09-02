@@ -1,0 +1,120 @@
+name: CI
+
+# Everything here runs offline. The hosted StudioNet journey
+# (tests/integration) is deliberately excluded: it spends real GEN on a shared
+# simulator and is run by hand before a deployment.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  contract:
+    name: Contract lint, validation and direct tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # genlayer-test downloads the pinned GenVM runner on first use; caching it
+      # keeps later runs from re-fetching ~130MB of artifacts.
+      - name: Cache GenVM artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/gltest-direct
+            ~/.cache/genvm-linter
+          key: genvm-cn-${{ hashFiles('contracts/consensus_noir.py') }}
+          restore-keys: genvm-cn-
+
+      - name: Install
+        run: python -m pip install -r requirements.txt
+
+      # genlayer-test 0.29.2 requests the legacy asset name, while the pinned
+      # GenVM release publishes that bundle as genvm-runners-all.tar.xz. Seed
+      # the exact verified archive into gltest's expected cache path first.
+      - name: Cache the pinned GenVM runner bundle
+        run: python scripts/cache_genvm_bundle.py
+
+      - name: Direct tests
+        run: python -m pytest tests/direct -q
+
+      # genvm-lint resolves the runner named in the contract header from the
+      # latest published bundle, which no longer ships the pinned one. Point
+      # GENVMROOT at the SDK the direct suite already downloaded. Relaxing the
+      # pin is not an acceptable alternative.
+      - name: Build GENVMROOT for semantic validation
+        run: python scripts/make_genvmroot.py
+
+      - name: Lint and validate the contract
+        env:
+          GENVMROOT: .genvmroot
+          PYTHONUTF8: "1"
+        run: genvm-lint check contracts/consensus_noir.py
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Match the production build runtime and the lockfile generator.
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # npm ci fails outright if package.json and the lockfile disagree, so this
+      # step is the proof that a clean install works, not just a setup step.
+      - name: Install from the lockfile
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Types
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+  scripts:
+    name: Operator scripts load without a machine-specific environment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      # These scripts once hard-coded one machine's npm path and one person's
+      # keychain account names. Parsing them on a clean Linux runner catches a
+      # regression back to anything environment-specific; they are not executed,
+      # because that would need an unlocked keychain and funded accounts.
+      - name: Parse every operator script
+        run: |
+          for file in scripts/*.mjs scripts/lib/*.mjs deploy/*.js; do
+            node --check "$file"
+          done
+
+      - name: Reject absolute machine paths and personal account names
+        run: |
+          # -I skips binaries: compiled .pyc files embed their build-time source
+          # path and would otherwise match on every run.
+          if grep -rnIE '[A-Za-z]:[\\/]Users[\\/]|moment-grid|portal-five' \
+               --exclude-dir=__pycache__ --exclude-dir=node_modules \
+               scripts deploy contracts specs docs README.md; then
+            echo "::error::Found a machine-specific path or personal account name."
+            exit 1
+          fi
+          echo "No machine-specific paths or account names found."

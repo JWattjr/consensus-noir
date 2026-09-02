@@ -49,7 +49,7 @@ export function revealKeyMessage(caseId: string, player: string): string {
     `Case: ${caseId}`,
     `Wallet: ${player.toLowerCase()}`,
     "",
-    "Signing this creates the private key that unlocks your reveal.",
+    "Signing this derives the secret that unseals your accusation later.",
     "It never leaves your browser, moves no funds, and approves no transaction.",
   ].join("\n");
 }
@@ -116,6 +116,11 @@ export function saveLocalAccusation(value: LocalAccusation): void {
   }
 }
 
+/**
+ * Writes the reveal secret to a plaintext JSON file. It is not encrypted, and
+ * anyone holding it can reveal this accusation from this wallet, so the UI
+ * says as much next to the button.
+ */
 export function downloadSaltBackup(accusation: LocalAccusation): void {
   const payload = JSON.stringify(
     {
@@ -147,7 +152,20 @@ export function downloadSaltBackup(accusation: LocalAccusation): void {
  * when local storage has been cleared and the wallet cannot re-derive the key
  * (for example after switching wallets).
  */
-export function importSaltBackup(raw: string, caseId: string, player: string): LocalAccusation {
+/**
+ * Restores a backup, but only after proving it reproduces the commitment.
+ *
+ * Case and wallet checks alone are not enough: an edited or truncated file
+ * still restores cleanly and then fails at reveal time, by which point the
+ * stake is already committed. Recomputing the commitment moves that failure
+ * to the moment of import, where it is still recoverable.
+ */
+export async function importSaltBackup(
+  raw: string,
+  caseId: string,
+  player: string,
+  onChainCommitment?: string,
+): Promise<LocalAccusation> {
   let parsed: Record<string, unknown>;
   try {
     parsed = JSON.parse(raw) as Record<string, unknown>;
@@ -169,8 +187,23 @@ export function importSaltBackup(raw: string, caseId: string, player: string): L
     Array.isArray(parsed.evidence_ids) ? (parsed.evidence_ids as unknown[]).map(String) : [],
   );
   if (!salt || !suspectId || !theory) {
-    throw new Error("That backup is missing the suspect, theory or key.");
+    throw new Error("That backup is missing the suspect, theory or reveal secret.");
   }
+
+  const recomputed = await makeAccusationCommitment(caseId, player, suspectId, theory, evidenceIds, salt);
+  const recorded = String(parsed.commitment ?? "").toLowerCase();
+  // The on-chain entry is authoritative; the file's own field is the fallback
+  // for restoring before an entry exists.
+  const expected = (onChainCommitment ?? "").toLowerCase() || (recorded === "not-committed" ? "" : recorded);
+
+  if (expected && expected !== recomputed) {
+    throw new Error(
+      onChainCommitment
+        ? "That backup does not match your on-chain accusation. It may have been edited, or it belongs to a different entry."
+        : "That backup is inconsistent — its contents do not reproduce its own commitment.",
+    );
+  }
+
   const restored: LocalAccusation = {
     caseId,
     player,
@@ -178,7 +211,7 @@ export function importSaltBackup(raw: string, caseId: string, player: string): L
     theory,
     evidenceIds,
     salt,
-    commitment: String(parsed.commitment ?? ""),
+    commitment: recomputed,
     savedAt: Date.now(),
   };
   saveLocalAccusation(restored);
