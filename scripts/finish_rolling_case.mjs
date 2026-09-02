@@ -55,9 +55,19 @@ async function main() {
   const now = () => Math.floor(Date.now() / 1000);
   console.log(`${caseId}: ${caseFile.status}, escrow ${Number(caseFile.total_escrow) / 1e18} GEN\n`);
 
+  // An underfilled case can never reach a verdict, so cancellation is its
+  // correct terminal route rather than waiting out the refund deadline.
+  const underfilled = Number(caseFile.player_count) < Number(caseFile.min_players);
+  if (underfilled && ["OPEN", "REVEAL"].includes(caseFile.status)
+      && now() >= Number(caseFile.accusation_deadline)) {
+    console.log(`  Only ${caseFile.player_count} of ${caseFile.min_players} required players — cancelling.`);
+    await send(lead, "cancel_case", "cancel_case", [caseId]);
+    caseFile = await read(lead, caseId);
+  }
+
   const pastRefund = now() >= Number(caseFile.refund_deadline);
 
-  if (!pastRefund) {
+  if (!underfilled && !pastRefund) {
     // Still recoverable as a real verdict: walk it forward.
     while (["OPEN", "REVEAL"].includes(caseFile.status)) {
       const gate = caseFile.status === "OPEN"
@@ -89,7 +99,11 @@ async function main() {
     caseFile = await read(lead, caseId);
   }
 
-  if (["VOID", "CANCELLED", "REFUNDABLE"].includes(caseFile.status) || caseFile.no_winner_refund) {
+  if (Number(caseFile.total_escrow) === 0) {
+    // Refunding an entry that does not exist reverts inside the contract while
+    // the transaction itself still succeeds, which prints a misleading hash.
+    console.log("\n  No stakes were placed, so there is nothing to return.");
+  } else if (["VOID", "CANCELLED", "REFUNDABLE"].includes(caseFile.status) || caseFile.no_winner_refund) {
     console.log("\n  Returning stakes:");
     for (const player of sessions) await send(player.client, `refund ${player.name}`, "refund_case", [caseId]);
   } else if (caseFile.status === "RESOLVED") {
