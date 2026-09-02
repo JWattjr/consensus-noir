@@ -15,23 +15,16 @@
  * Usage:
  *   node scripts/finish_rolling_case.mjs <caseId>
  */
-import { createRequire } from "node:module";
 
-const CLI_MODULES = "C:/Users/User/AppData/Roaming/npm/node_modules/genlayer/node_modules";
-const require = createRequire(import.meta.url);
-const keytar = require(`${CLI_MODULES}/keytar`);
-const { createClient, createAccount } = require(`${CLI_MODULES}/genlayer-js/dist/index.js`);
-const { studionet } = require(`${CLI_MODULES}/genlayer-js/dist/chains/index.js`);
+import { contractAddress, loadSdk, resolveAccounts, privateKeyFor } from "./lib/genlayer-env.mjs";
 
-const CONTRACT = "0x3133B01d4EB7e1022913dF5fb1219cAE77D3f4a6";
-const ACCOUNTS = ["moment-grid-studionet", "portal-five-release"];
+const CONTRACT = contractAddress();
+const { createClient, createAccount, studionet, keytar } = loadSdk();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function session(keychain) {
-  const key = await keytar.getPassword("genlayer-cli", `account:${keychain}`);
-  if (!key) throw new Error(`No unlocked keychain entry for "${keychain}".`);
-  const account = createAccount(key.startsWith("0x") ? key : `0x${key}`);
-  return { client: createClient({ chain: studionet, account }), address: account.address, keychain };
+async function session(accountName) {
+  const account = createAccount(await privateKeyFor(keytar, accountName));
+  return { client: createClient({ chain: studionet, account }), address: account.address, name: accountName };
 }
 
 async function send(client, label, functionName, args) {
@@ -55,7 +48,7 @@ async function main() {
   if (!caseId) throw new Error("Usage: node scripts/finish_rolling_case.mjs <caseId>");
 
   const sessions = [];
-  for (const name of ACCOUNTS) sessions.push(await session(name));
+  for (const name of await resolveAccounts(keytar, { need: 2 })) sessions.push(await session(name));
   const lead = sessions[0].client;
 
   let caseFile = await read(lead, caseId);
@@ -98,7 +91,7 @@ async function main() {
 
   if (["VOID", "CANCELLED", "REFUNDABLE"].includes(caseFile.status) || caseFile.no_winner_refund) {
     console.log("\n  Returning stakes:");
-    for (const player of sessions) await send(player.client, `refund ${player.keychain}`, "refund_case", [caseId]);
+    for (const player of sessions) await send(player.client, `refund ${player.name}`, "refund_case", [caseId]);
   } else if (caseFile.status === "RESOLVED") {
     console.log("\n  Resolved. Settlement is left to the players who entered.");
   }

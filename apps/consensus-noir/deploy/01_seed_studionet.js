@@ -1,4 +1,5 @@
-const CONTRACT = "0x3133B01d4EB7e1022913dF5fb1219cAE77D3f4a6";
+import { contractAddress } from "../scripts/lib/genlayer-env.mjs";
+const CONTRACT = contractAddress();
 const CASE_ID = "glasshouse-0217-live";
 
 const SUSPECTS = [

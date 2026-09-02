@@ -131,7 +131,7 @@ export function Desk({
     try {
       setSalt(await deriveSalt(caseFile.case_id, wallet));
     } catch (error) {
-      setKeyError(error instanceof Error ? error.message : "Could not create your reveal key.");
+      setKeyError(error instanceof Error ? error.message : "Could not derive your reveal secret.");
     }
   }
 
@@ -141,7 +141,9 @@ export function Desk({
     if (!file) return;
     if (!wallet) { await onConnect(); return; }
     try {
-      const draft = importSaltBackup(await file.text(), caseFile.case_id, wallet);
+      // Pass the on-chain commitment so a mismatched backup fails here,
+      // rather than at reveal time when the stake is already committed.
+      const draft = await importSaltBackup(await file.text(), caseFile.case_id, wallet, entry?.commitment);
       setSuspectId(draft.suspectId);
       setTheory(draft.theory);
       setPicks(draft.evidenceIds);
@@ -256,7 +258,7 @@ export function Desk({
           <div className="salt-box">
             <div className="salt-copy">
               <span className="salt-icon"><KeyRound size={15} aria-hidden="true" /></span>
-              <div><strong>Reveal key</strong><small>{salt ? `${salt.slice(0, 8)}••••${salt.slice(-8)}` : "Sign once to create a key you can always regenerate"}</small></div>
+              <div><strong>Reveal secret</strong><small>{salt ? `${salt.slice(0, 8)}••••${salt.slice(-8)}` : "Sign once to derive a secret you can always regenerate"}</small></div>
             </div>
             <button type="button" className="secondary-button" onClick={() => void handleDeriveKey()} disabled={isDemo}>{salt ? "Regenerate" : "Create key"}</button>
           </div>
@@ -280,12 +282,12 @@ export function Desk({
 
           <div className="warning-box">
             <AlertTriangle size={15} aria-hidden="true" />
-            <span>Save a backup before committing. Without the key you cannot reveal, and you lose your stake.</span>
+            <span>Save a backup before committing. Without this secret you cannot reveal, and you lose your stake. The file is plain text — anyone who has it can reveal this accusation from your wallet.</span>
           </div>
           <button className="primary-button full-button" type="button" disabled={!canCommit || Boolean(busy)} onClick={() => void onCommit({ suspectId, theory, evidenceIds: picks, salt })}>
             {actionLabel(busy, "commit", `Stake ${formatGen(caseFile.entry_stake_wei)} GEN on ${suspectId || "a suspect"}`)}
           </button>
-          <button className="backup-button" type="button" onClick={handleDownload} disabled={!salt}><Download size={14} aria-hidden="true" /> Download reveal key backup</button>
+          <button className="backup-button" type="button" onClick={handleDownload} disabled={!salt}><Download size={14} aria-hidden="true" /> Download backup (plain text)</button>
         </div>
       ) : null}
 

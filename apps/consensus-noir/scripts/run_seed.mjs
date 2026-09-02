@@ -14,19 +14,16 @@
  *   node scripts/run_seed.mjs 01_seed_studionet
  *
  * Options:
- *   --account <keychain-name>   defaults to moment-grid-studionet (the curator)
+ *   --account <name>   GenLayer CLI account. Defaults to
+ *                      CONSENSUS_NOIR_CURATOR_ACCOUNT, else the first
+ *                      unlocked account in the keychain.
  */
-import { createRequire } from "node:module";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { APP_ROOT, loadSdk, resolveAccounts, privateKeyFor } from "./lib/genlayer-env.mjs";
 
-const CLI_MODULES = "C:/Users/User/AppData/Roaming/npm/node_modules/genlayer/node_modules";
-const require = createRequire(import.meta.url);
-const keytar = require(`${CLI_MODULES}/keytar`);
-const { createClient, createAccount } = require(`${CLI_MODULES}/genlayer-js/dist/index.js`);
-const { studionet } = require(`${CLI_MODULES}/genlayer-js/dist/chains/index.js`);
+const { createClient, createAccount, studionet, keytar } = loadSdk();
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname).replace(/^\/([A-Za-z]:)/, "$1"), "..");
 
 function arg(flag, fallback) {
   const index = process.argv.indexOf(flag);
@@ -41,21 +38,14 @@ async function main() {
     throw new Error("Usage: node scripts/run_seed.mjs <deploy-script-name> [profile] [--account <name>]");
   }
 
-  const accountName = arg("--account", "moment-grid-studionet");
-  const key = await keytar.getPassword("genlayer-cli", `account:${accountName}`);
-  if (!key) {
-    throw new Error(
-      `No unlocked keychain entry for "${accountName}". ` +
-        `Unlock it with the GenLayer CLI first; this runner never accepts a key on the command line.`,
-    );
-  }
-
+  const [discovered] = await resolveAccounts(keytar, { need: 1 });
+  const accountName = arg("--account", discovered);
   const client = createClient({
     chain: studionet,
-    account: createAccount(key.startsWith("0x") ? key : `0x${key}`),
+    account: createAccount(await privateKeyFor(keytar, accountName)),
   });
 
-  const modulePath = path.join(root, "deploy", `${scriptName}.js`);
+  const modulePath = path.join(APP_ROOT, "deploy", `${scriptName}.js`);
   const seed = (await import(pathToFileURL(modulePath).href)).default;
   if (typeof seed !== "function") {
     throw new Error(`${modulePath} has no default-exported seed function.`);

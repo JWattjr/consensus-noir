@@ -11,16 +11,11 @@
  * Usage:
  *   node scripts/run_production_lifecycle.mjs glasshouse-0217-proof
  */
-import { createRequire } from "node:module";
 import crypto from "node:crypto";
+import { contractAddress, loadSdk, resolveAccounts, privateKeyFor } from "./lib/genlayer-env.mjs";
 
-const CLI_MODULES = "C:/Users/User/AppData/Roaming/npm/node_modules/genlayer/node_modules";
-const require = createRequire(import.meta.url);
-const keytar = require(`${CLI_MODULES}/keytar`);
-const { createClient, createAccount } = require(`${CLI_MODULES}/genlayer-js/dist/index.js`);
-const { studionet } = require(`${CLI_MODULES}/genlayer-js/dist/chains/index.js`);
-
-const CONTRACT = "0x3133B01d4EB7e1022913dF5fb1219cAE77D3f4a6";
+const CONTRACT = contractAddress();
+const { createClient, createAccount, studionet, keytar } = loadSdk();
 const DOMAIN = "consensus-noir-accusation-v1";
 const CASE_ID = process.argv[2] ?? "glasshouse-0217-proof";
 const STAKE = 1000000000000000000n;
@@ -44,7 +39,6 @@ function commitment(caseId, player, suspectId, theory, picks, salt) {
 
 const PLAYERS = [
   {
-    keychain: "moment-grid-studionet",
     suspect: "SUSPECT-B",
     // Matches the exhibits validators cited on the integration run -> weight 4.
     picks: ["EVIDENCE-01", "EVIDENCE-03", "EVIDENCE-04"],
@@ -61,7 +55,6 @@ const PLAYERS = [
       "discarding one of them without cause.",
   },
   {
-    keychain: "portal-five-release",
     suspect: "SUSPECT-B",
     // Deliberately different -> partial overlap, exercising the weighted split.
     picks: ["EVIDENCE-02", "EVIDENCE-04", "EVIDENCE-05"],
@@ -80,10 +73,8 @@ const PLAYERS = [
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function clientFor(keychainName) {
-  const key = await keytar.getPassword("genlayer-cli", `account:${keychainName}`);
-  if (!key) throw new Error(`No unlocked keychain entry for "${keychainName}".`);
-  const account = createAccount(key.startsWith("0x") ? key : `0x${key}`);
+async function clientFor(accountName) {
+  const account = createAccount(await privateKeyFor(keytar, accountName));
   return { client: createClient({ chain: studionet, account }), address: account.address };
 }
 
@@ -109,8 +100,11 @@ async function waitUntil(client, unix, label) {
 }
 
 async function main() {
+  const accounts = await resolveAccounts(keytar, { need: PLAYERS.length });
   const sessions = [];
-  for (const player of PLAYERS) sessions.push({ ...player, ...(await clientFor(player.keychain)) });
+  for (const [index, player] of PLAYERS.entries()) {
+    sessions.push({ ...player, ...(await clientFor(accounts[index])) });
+  }
   const lead = sessions[0].client;
 
   const caseFile = await readCase(lead);

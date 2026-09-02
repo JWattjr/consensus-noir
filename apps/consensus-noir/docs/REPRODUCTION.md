@@ -37,7 +37,7 @@ On this Windows setup, the two funded CLI accounts can be supplied without
 copying keys into the repository by running:
 
 ```powershell
-node scripts/run_studionet_integration.cjs
+node scripts/run_studionet_integration.mjs
 ```
 
 The helper reads the accounts from the GenLayer CLI OS keychain, writes a

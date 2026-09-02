@@ -1,6 +1,10 @@
 /*
  * The two seeded players used to pre-fill a rolling case.
  *
+ * These players are positional, not tied to any particular wallet: the
+ * caller resolves account names from the environment and pairs them by
+ * index, so nothing here depends on one person's keychain.
+ *
  * Shared by prepare_rolling_case.mjs (which enters them) and
  * reveal_seeded.mjs (which reveals them), so the commitment and the reveal
  * can never drift apart.
@@ -11,7 +15,6 @@
 export const SEEDED = {
   pressroom: [
     {
-      keychain: "moment-grid-studionet",
       suspect: "SUSPECT-A",
       picks: ["EVIDENCE-04", "EVIDENCE-02", "EVIDENCE-05"],
       salt: "a".repeat(32),
@@ -25,7 +28,6 @@ export const SEEDED = {
         "story was assembled afterwards to cover a gap she could not otherwise explain.",
     },
     {
-      keychain: "portal-five-release",
       suspect: "SUSPECT-C",
       picks: ["EVIDENCE-05", "EVIDENCE-02", "EVIDENCE-04"],
       salt: "b".repeat(32),
@@ -41,7 +43,6 @@ export const SEEDED = {
   ],
   glasshouse: [
     {
-      keychain: "moment-grid-studionet",
       suspect: "SUSPECT-A",
       picks: ["EVIDENCE-02", "EVIDENCE-05", "EVIDENCE-01"],
       salt: "a".repeat(32),
@@ -54,7 +55,6 @@ export const SEEDED = {
         "coincidence, and she is the one who would know when it fell.",
     },
     {
-      keychain: "portal-five-release",
       suspect: "SUSPECT-C",
       picks: ["EVIDENCE-02", "EVIDENCE-05", "EVIDENCE-03"],
       salt: "b".repeat(32),
