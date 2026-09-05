@@ -55,6 +55,7 @@ This table is the shortest path from a project claim to independently inspectabl
 | Permissionless liveness | Anyone can advance phases, request adjudication, or open refunds after the fixed backstop | `advance_case`, `resolve_case`, `make_refundable`, cancellation/refund tests |
 | Real network execution | One production contract contains a joinable case and an independently settled end-to-end proof case | [`deployment/studionet.json`](deployment/studionet.json), `glasshouse-0217-proof`, transaction ledger below |
 | Client truthfulness | The UI distinguishes preview data, pending consensus, finalized execution, validator-agreed fields, and leader-reported metadata | [`frontend/src`](frontend/src), frontend lint/type/build commands below |
+| Reviewer availability | Initial reads use a same-origin, cacheable docket endpoint; SDK calls use a guarded RPC relay with bounded read caching and stale recovery, avoiding opaque browser CORS failures when StudioNet throttles a shared IP | [`frontend/src/app/api/docket/route.ts`](frontend/src/app/api/docket/route.ts), [`frontend/src/app/api/genlayer/route.ts`](frontend/src/app/api/genlayer/route.ts) |
 
 ---
 
