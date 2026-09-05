@@ -11,8 +11,7 @@ import {
   IS_CONFIGURED,
   NETWORK_NAME,
   explorerTxUrl,
-  readCase,
-  readCaseIds,
+  readDocket,
   readEntry,
   writeCase,
   type EthereumProvider,
@@ -86,7 +85,7 @@ export function NoirApp() {
     [cases, selectedId],
   );
 
-  const refreshCases = useCallback(async () => {
+  const refreshCases = useCallback(async (fresh = false) => {
     if (!IS_CONFIGURED) {
       setCases([demoCase()]);
       setSelectedId(DEMO_CASE.case_id);
@@ -95,8 +94,7 @@ export function NoirApp() {
     }
     setLoading(true);
     try {
-      const ids = await readCaseIds();
-      const loaded = orderCases(await Promise.all(ids.map((caseId) => readCase(caseId))));
+      const loaded = orderCases(await readDocket({ fresh }));
       setCases(loaded);
       setLoadError(null);
       setSelectedId((current) =>
@@ -185,7 +183,7 @@ export function NoirApp() {
         });
       });
       if (result.phase === "finalized" || result.phase === "failed") forgetPending();
-      await refreshCases();
+      await refreshCases(true);
       await refreshEntry();
       return result;
     },
@@ -308,7 +306,7 @@ export function NoirApp() {
           ) : (
             <span className="network-badge"><span className="status-pip" aria-hidden="true" /> {NETWORK_NAME}</span>
           )}
-          <button type="button" className="header-refresh" onClick={() => void refreshCases()} aria-label="Refresh docket" disabled={loading}>
+          <button type="button" className="header-refresh" onClick={() => void refreshCases(true)} aria-label="Refresh docket" disabled={loading}>
             <RefreshCw size={15} className={loading ? "spin" : ""} aria-hidden="true" />
           </button>
           {wallet ? (
@@ -370,7 +368,7 @@ export function NoirApp() {
               onRefund={refund}
               onCancelCase={cancelCase}
               onMakeRefundable={makeRefundable}
-              onRefresh={async () => { await refreshCases(); await refreshEntry(); }}
+              onRefresh={async () => { await refreshCases(true); await refreshEntry(); }}
             />
           </>
         )}

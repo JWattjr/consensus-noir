@@ -7,8 +7,12 @@ export const CONTRACT_ADDRESS =
 export const IS_CONFIGURED = CONTRACT_ADDRESS.length > 0;
 export const NETWORK_NAME = "GenLayer StudioNet";
 export const NETWORK_CHAIN_ID = 61999;
+const DEFAULT_GENLAYER_RPC = "https://studio.genlayer.com/api";
+const configuredPublicRpc = process.env.NEXT_PUBLIC_GENLAYER_RPC?.trim();
 export const NETWORK_RPC_URL =
-  process.env.NEXT_PUBLIC_GENLAYER_RPC ?? "https://studio.genlayer.com/api";
+  configuredPublicRpc && /^https?:\/\//i.test(configuredPublicRpc)
+    ? configuredPublicRpc
+    : DEFAULT_GENLAYER_RPC;
 export const EXPLORER_URL =
   studionet.blockExplorers?.default?.url ?? "https://genlayer-explorer.vercel.app";
 
@@ -122,10 +126,17 @@ declare global {
 }
 
 function clientConfig(account?: Address) {
-  const endpoint = process.env.NEXT_PUBLIC_GENLAYER_RPC;
+  // Browser traffic goes through our same-origin relay. StudioNet's public RPC
+  // can return a CORS-less 429 when a shared quota is exhausted, which viem can
+  // only surface as "Failed to fetch". Server-side callers still use the
+  // canonical upstream directly.
+  const endpoint =
+    typeof window !== "undefined"
+      ? "/api/genlayer"
+      : process.env.GENLAYER_RPC_URL?.trim() || NETWORK_RPC_URL;
   return {
     chain: studionet,
-    ...(endpoint ? { endpoint } : {}),
+    endpoint,
     ...(account && typeof window !== "undefined" && window.ethereum
       ? { account, provider: window.ethereum }
       : {}),
@@ -250,6 +261,21 @@ export async function readCaseIds(): Promise<string[]> {
     args: [],
   });
   return asArray<unknown>(value).map(String);
+}
+
+export async function readDocket(options: { fresh?: boolean } = {}): Promise<NoirCase[]> {
+  if (!IS_CONFIGURED) return [];
+  const url = options.fresh ? `/api/docket?fresh=1&at=${Date.now()}` : "/api/docket";
+  const response = await fetch(url, { cache: options.fresh ? "no-store" : "default" });
+  const payload = (await response.json().catch(() => null)) as
+    | { cases?: unknown[]; error?: string }
+    | null;
+  if (!response.ok) {
+    throw new Error(payload?.error || "The StudioNet docket is temporarily unavailable.");
+  }
+  return asArray<Record<string, unknown>>(payload?.cases).map((item) =>
+    normaliseCase(item, asArray<unknown>(item.entries)),
+  );
 }
 
 export async function readCase(caseId: string): Promise<NoirCase> {
